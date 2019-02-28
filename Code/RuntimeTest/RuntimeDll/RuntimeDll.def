@@ -1,0 +1,6 @@
+LIBRARY   RuntimeDll
+
+EXPORTS
+   AllocateMem   @1
+   RuntimeDll    @2
+   FreeMem       @3

@@ -1,0 +1,112 @@
+Windows基础知识：
+
+1. 运行时（静态编译与动态编译）
+
+/MDd  /MD  -  Multi-threaded Debug DLL / Multi-threaded DLL
+
+0:000> k
+ChildEBP RetAddr  
+0037f760 50c6151e ntdll!RtlAllocateHeap
+0037f77c 50c70206 MSVCR90D!_heap_alloc_base+0x5e
+0037f7c4 50c6ffbf MSVCR90D!_nh_malloc_dbg+0x2c6
+0037f7e4 50c6ff6c MSVCR90D!_nh_malloc_dbg+0x7f
+0037f80c 50c7b5eb MSVCR90D!_nh_malloc_dbg+0x2c
+0037f82c 50c5db81 MSVCR90D!malloc+0x1b
+0037f848 01081fbe MSVCR90D!operator new+0x11
+0037f87c 010817b2 RuntimeTest!operator new+0x3e [f:\dd\vctools\crt_bld\self_x86\crt\src\newopnt.cpp @ 18]
+0037f88c 010815af RuntimeTest!operator new[]+0x12 [f:\dd\vctools\crt_bld\self_x86\crt\src\newaopnt.cpp @ 15]
+0037fad0 01081d58 RuntimeTest!wmain+0x19f [c:\users\administrator\desktop\runtimetest\runtimetest\runtimetest.cpp @ 49]
+0037fb20 01081b9f RuntimeTest!__tmainCRTStartup+0x1a8 [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 583]
+0037fb28 758a343d RuntimeTest!wmainCRTStartup+0xf [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 403]
+0037fb34 771c9832 kernel32!BaseThreadInitThunk+0xe
+0037fb74 771c9805 ntdll!__RtlUserThreadStart+0x70
+0037fb8c 00000000 ntdll!_RtlUserThreadStart+0x1b
+
+Load Module: C:\Users\Administrator\Desktop\RuntimeTest\Debug\RuntimeDll.dll
+DLL Alloc Buffer: 0x00348648
+Exe Alloc Buffer: 0x003486E8
+
+如果是动态DLL链接编译的所有模块，EXE和DLL动态分配的内存可以在任何地方释放，
+因为它们都是调用 MSVCR*.dll 分配，释放也是调用这个模块。
+
+/MTd  /MT  -  Multi-thread Debug / Multi-threaded 
+
+0:000> k
+ChildEBP RetAddr  
+0037f674 50af5d7e ntdll!RtlAllocateHeap
+0037f690 50ae0eb6 RuntimeDll!_heap_alloc_base+0x5e [f:\dd\vctools\crt_bld\self_x86\crt\src\malloc.c @ 105]
+0037f6d8 50ae0c3f RuntimeDll!_heap_alloc_dbg_impl+0x1f6 [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgheap.c @ 427]
+0037f6f8 50ae0bdc RuntimeDll!_nh_malloc_dbg_impl+0x1f [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgheap.c @ 239]
+0037f720 50ae068b RuntimeDll!_nh_malloc_dbg+0x2c [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgheap.c @ 296]
+0037f740 50ae93f1 RuntimeDll!malloc+0x1b [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgmalloc.c @ 56]
+0037f75c 50adf04e RuntimeDll!operator new+0x11 [f:\dd\vctools\crt_bld\self_x86\crt\src\new.cpp @ 59]
+0037f790 50adde32 RuntimeDll!operator new+0x3e [f:\dd\vctools\crt_bld\self_x86\crt\src\newopnt.cpp @ 18]
+0037f7a0 50add77a RuntimeDll!operator new[]+0x12 [f:\dd\vctools\crt_bld\self_x86\crt\src\newaopnt.cpp @ 15]
+0037f894 0108156c RuntimeDll!AllocateMem+0x2a [c:\users\administrator\desktop\runtimetest\runtimedll\runtimedll.cpp @ 20]
+0037fad0 01081d58 RuntimeTest!wmain+0x15c [c:\users\administrator\desktop\runtimetest\runtimetest\runtimetest.cpp @ 40]
+0037fb20 01081b9f RuntimeTest!__tmainCRTStartup+0x1a8 [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 583]
+0037fb28 758a343d RuntimeTest!wmainCRTStartup+0xf [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 403]
+0037fb34 771c9832 kernel32!BaseThreadInitThunk+0xe
+0037fb74 771c9805 ntdll!__RtlUserThreadStart+0x70
+0037fb8c 00000000 ntdll!_RtlUserThreadStart+0x1b
+
+对于静态链接形式，运行时库相关内容被嵌入到对应模块，分配的内存是从当前模块初始化的堆上分配。
+而对于动态链接的模块分配内存，无法在静态链接CRT的模块中释放，反过来亦然。
+
+那么同理推之，如果两个模块都是静态链接CRT方式，那么它们动态分配内存也无法相互释放。
+
+所以模块间最好不要相关传递自己通过CRT库函数动态分配的内存。
+
+GlobalAlloc     // 在32位的Windows上已经简化为从进程默认堆上分配内存
+HeapAlloc       // 从指定堆上分配内存，有堆句柄HANDLE hHeap指定堆
+LocalAlloc      // 基本等价于GlobalAlloc，16位系统上则是另外一回事
+malloc          // 从运行时堆上分配
+new             // 同malloc
+VirtualAlloc    // 系统调用，并非从堆上分配内存，而是直接从地址空间划出内存空间
+
+===============================================================================================
+msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软提供和编译，只供操作系统的模块使用。
+而后者是可以下载安装的运行时支持程序中的模块，用于支持用户程序。
+
+代码参看：RuntimeTest
+
+2. 堆 和 栈，运行时堆和线程堆
+    进程/线程创建过程中，堆和栈的分配
+        这个参见 进程与线程的创建过程。
+    
+    
+    运行时堆： malloc / new 从运行时堆上分配内存
+        在CRT初始化时，会调用到 heap_init 函数进行运行时堆的初始化。最终调用 Kernel32!HeapCreate 进行堆创建。
+        
+        如果模块采用动态链接形式编译，那么运行时库MSCRT*.dll加载时就已经初始化了，在模块入口处就不需要再初始化了。
+        如果模块采用静态链接形式编译，运行时库链接到模块了，在模块加载时进入入口之前就要先执行运行时初始化代码。
+        
+    进程默认堆： GlobalAlloc / LocalAlloc 从该堆上分配内存
+        可以通过函数 kernel32!GetProcessHeap() 获取当前进程的 进程默认堆。
+        kernel32!GetProcessHeaps() 函数获取进程的私有堆，其中包括默认堆和通过HeapCreate创建的其他的堆        
+        
+        其在系统中的位置如下所示：
+        
+        0:000> dt ntdll!_PEB    
+           ......
+           +0x014 SubSystemData    : (null) 
+           +0x018 ProcessHeap      : 0x003c0000     // 进程默认堆
+           +0x01c FastPebLock      : 0x77292100 _RTL_CRITICAL_SECTION    
+           ......
+           +0x088 NumberOfHeaps    : 1
+           +0x08c MaximumNumberOfHeaps : 0x10
+           +0x090 ProcessHeaps     : 0x77294760  -> 0x003c0000  // 进程中的堆们   
+           ......
+
+3. 线程创建与调度
+
+
+
+4. 进城创建与调度
+5. 异常处理 过程 SEH
+6. TLS
+7. 系统调用
+8. 界面子系统（消息系统/对话框，模态与非模态）
+9. 定时器
+10. 内核知识 APC DPC
+11. 句柄/事件（命名与匿名）/互斥提（Mutex）/信号量（Semophore）
