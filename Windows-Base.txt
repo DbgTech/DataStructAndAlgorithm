@@ -72,7 +72,7 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
 
 2. 堆 和 栈，运行时堆和线程堆
     进程/线程创建过程中，堆和栈的分配
-        这个参见 进程与线程的创建过程。
+        
     
     
     运行时堆： malloc / new 从运行时堆上分配内存
@@ -98,15 +98,70 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
            +0x090 ProcessHeaps     : 0x77294760  -> 0x003c0000  // 进程中的堆们   
            ......
 
-3. 线程创建与调度
-
-
-
-4. 进城创建与调度
-5. 异常处理 过程 SEH
-6. TLS
-7. 系统调用
-8. 界面子系统（消息系统/对话框，模态与非模态）
-9. 定时器
-10. 内核知识 APC DPC
-11. 句柄/事件（命名与匿名）/互斥提（Mutex）/信号量（Semophore）
+3. 进城创建，线程创建与调度
+    由 CreateProcessW 发起
+        参数：应用程序名字
+              命令行
+              进程安全属性
+              线程安全属性
+              是否可继承句柄
+              创建标记
+              环境变量
+              进程当前目录
+              启动信息
+              进程信息（返回值）
+    
+        处理环境变量字符串（Ansi->Unicode）
+        根据第一个参数或 命令行参数 获取应用程序路径
+        打开应用程序文件，创建文件的内存 Section
+        
+        调用 NtCreateProcess 创建一个进程对象
+        
+        调用 BasePushProcessParameters 将进程的命令行参数写入新建进程
+            即 PEB 结构体中的ProcessParameters成员：
+            +0x010 ProcessParameters : _RTL_USER_PROCESS_PARAMETERS
+        
+        如果不继承父进程句柄，那么对于CUI进程，则需要将 标准输入输出三个句柄复制到新进程
+            PRTL_USER_PROCESS_PARAMETERS ParametersInNewProcess;
+            &ParametersInNewProcess->StandardInput; 
+            // 表示取向对于指针 ParametersInNewProcess，成员StandardInput的地址
+            // 即 ParametersInNewProcess + StandardInput在结构体偏移
+            
+        创建线程：
+        BaseCreateStack() 首先为新进程中的线程创建 栈
+            其中栈大小以及提交值 都是 ImageInformation结构体成员指定，比如ImageInformation.CommittedStackSize
+            其实这个结构体内容是从 进程文件（Exe）中提取的信息
+            
+            在新进程中分配指定栈大小内存，但是只提交其中一部分。
+            如果空间允许则还需要添加Guard页（修改最后一页为PAGE_GUARD）
+            
+        BaseInitializeContext() 为新的线程创建一个初始化上下文，即初始化一个 CONTEXT 结构体
+            其中会初始化其中的段寄存器，指令寄存器，栈寄存器等。
+            EIP = BaseProcessStartThunk
+            ESP = 刚建立的栈
+            Eax = 从Image中读取TransferAddress      这个应该是模块入口
+            Ebx = 参数，其实是PEB指针
+            
+        NtCreateThread() 创建并初始化线程对象
+        
+        如果有调试标记，则调用 DbgUiConnectToDbg 通知调试器
+        
+        调用 CsrClientCallServer() 通知 CSRSS.exe进程进程创建完毕了
+            
+        返回参数在前面过程中已经都填写完毕。
+            
+    NtCreateProcess() 内核中创建进程对象
+    
+    NtCreateThread() 内核中创建线程对象
+    
+    CsrClientCallServer() 通知 csrss.exe进程已经创建完了新的进程
+    
+    
+        
+4. 异常处理 过程 SEH
+5. TLS
+6. 系统调用
+7. 界面子系统（消息系统/对话框，模态与非模态）
+8. 定时器
+9. 内核知识 APC DPC
+10. 句柄/事件（命名与匿名）/互斥提（Mutex）/信号量（Semophore）

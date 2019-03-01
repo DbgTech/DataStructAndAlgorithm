@@ -1,0 +1,45 @@
+
+
+
+1. Windows历史
+2. Windows体系结构
+3. Windows操作系统中的概念
+4. Windows SysInternals工具集
+
+Windows内核深入解析 1-5章
+Windows内核源码情景分析 第1-2，4-8，13-14章
+
+5. 开机引导过程
+    Windows内核深入解析 13章
+    
+6. 内存管理解密
+    Windows内核深入解析 10章
+    Windows内核深入解析 11章
+    
+    Windows内核源码情景分析 第3章    
+    
+7. Windows安全机制和实现
+
+    Windows内核深入解析 6章
+    
+    Windows内核源码情景分析 第12章
+
+8. Windows驱动和硬件管理
+    Windows内核深入解析 8章
+    
+    Windows内核源码情景分析 第9章
+
+9. Windows存储和文件系统
+    
+    Windows内核深入解析 9章
+    Windows内核深入解析 12章
+    
+    Windows内核源码情景分析 第11章
+    
+10. 网络协议的构成和实现
+    Windows内核深入解析 7章
+    
+    Windows内核源码情景分析 第10章
+
+11. Windows程序排错与蓝屏调试
+    Windows内核深入解析 14章
