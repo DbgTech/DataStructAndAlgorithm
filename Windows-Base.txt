@@ -72,9 +72,10 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
 
 2. 堆 和 栈，运行时堆和线程堆
     进程/线程创建过程中，堆和栈的分配
-        
+		进程的第一个线程栈是在 CreateProcessW 函数中通过跨进程操作分配内存来设置栈。
+		通过 CreateThread 创建的线程则在其调用的CreateRemoteThread 函数中进行栈创建
     
-    
+		堆创建： 
     运行时堆： malloc / new 从运行时堆上分配内存
         在CRT初始化时，会调用到 heap_init 函数进行运行时堆的初始化。最终调用 Kernel32!HeapCreate 进行堆创建。
         
@@ -151,9 +152,103 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
         返回参数在前面过程中已经都填写完毕。
             
     NtCreateProcess() 内核中创建进程对象
-    
+		首先判断调用来源，R3层的调用需要判断其参数有效性
+		调用函数 PspCreateProcess() 继续执行，该函数是NtCreateProcess的实际实现者，创建进程对象，并初始化
+			如果有父进程，则根据父进程的基础优先级和CPU亲核心设置子进程，否则单独设置。
+			根据参数获取进程映像，尝试获取调试端口对象和异常端口对象。
+			调用 ObCreateObject() 方法创建 进程对象（新进程）。
+				调用 ObpAllocateObject() 分配对象并填充对象成员，分配内存，按照进程对象格式对内存进行填充。
+				创建的进程对象其实是 对象头 加 EPROCESS 结构体
+
+			清空 EPROCESS 结构体，并对其中的成员进行初始化：
+			初始化线程列表，用于保存当前进程的线程
+			设置异常端口和调试端口  DebugPort ／ ExceptionPort
+			设置 设备映像 DeviceMap (确定其作用？？？)
+			设置会话ID，父进程ID等
+			调用 PspInitializeProcessSecurity 函数初始化进程的安全令牌，或者来自父进程或者来自系统初始化令牌
+
+			调用 MmCreateProcessAddressSpace() 函数创建地址空间，映射系统部分，包括hyper space
+
+			调用 KeInitializeProcess() 函数初始化内核进程对象。
+				初始化进程对象的 标准分发对象头，其实就是设置类型并初始化等待列表头
+				初始化其中的栈数量，准备好进程列表，线程列表头等
+				对于 i386 则还需要设置IOPL 标记。
+				
+			调用 ObInitProcess() 函数创建进程的 对象表，有父进程则从父进程拷贝带有继承标记的对象元素
+
+			调用 MmInitializeProcessAddressSpace() 初始化新的映像 地址空间
+				初始化工作集和互斥体，用于支持分页
+
+				KeAttachProcess() 用于将当前线程挂到新建的进程
+					将一个线程挂到目标进程地址空间
+					调用 KiAttachProcess() 函数线程到 新剑进程
+
+					MiGetPdeAddress() 用于获取页框，初始化页帧
+
+					设置进程名称
+					调用 MmMapViewOfSection() 函数将映像文件映射进内存中。
+
+				最后从新建进程上分离，KeDetachProcess()
+
+			调用 ObInitProcess2() 函数继续初始化
+				这个函数在image文件映射进内存之后调用，允许对象管理器根据子系统设置有序的具柄分配
+
+			调用 PspMapSystemDll() 函数映射 系统DLL到目标进程
+				调用 MmMapViewOfSection() 函数将 PspSystemDll 中指定的模块映射到系统中
+
+			调用 ObInsertObject() 将进程对象 插入到对象列表中
+
+			如果父进程属于某个 工作集，则将新建进程放到这个工作集中
+
+			将进程加入到活动进程列表，PsActiveProcessHead
+
+			调用 MmCreatePeb() 创建进程的PEB页，并且初始 PEB 值
+				挂接到目标进程中，创建 PEB 页面，设置PEB结构中的成员的值，去除挂接
+
+			设置安全属性／审计等一系列工作
+			
     NtCreateThread() 内核中创建线程对象
-    
+		首先根据调用函数的代码所处环境：内核或R3，如果来自R3则验证所有参数有效性
+
+		调用 PspCreateThread() 继续创建线程
+			该函数创建和初始化线程对象，它是NtCreateThead 和 PsCreateSystemThread的实现基础
+
+			创建线程对象之前，先对传入参数进行校验，用户层调用，目标进程不能是系统进程。
+
+			调用 ObCreateObject() 创建线程对象，类似与进程对象，线程对象体为 ETHREAD 结构体
+			在指定句柄表中创建一个句柄条目，并返回指向条目的句柄
+
+			初始化 LPC 使用的心好凉和 Lpc回复链，初始化Irp列表
+
+			调用 MmCreateKernelStack() 函数创建线程的内核栈
+				分配物理内存，然后获取其虚拟内存。
+
+			调用 MmCreateTeb() 函数创建 TEB ，设置线程的起始地址
+
+			调用 KeInitializeThread() 函数 初始化线程对象。优先级，亲和性和初始参数都是从上下文帧获取
+				其中指定了线程第一次被调度时使用的内核函数（第一次调度肯定是先从内核开始执行）
+					用户线程从 PspUserThreadStartup() 函数起始
+					内核线程从 PspSystemThreadStartup() 函数起始
+				thread中的 ServiceTable成员设置，即 SSDT，普通线程指向 KeServiceDescriptorTable[0]
+
+				设置 APC 使用的列表
+
+				调用 KiInitializeContextThread() 设置线程的初始上下文。
+
+				将线程放到进程的线程队列中。
+
+			如果 PspCreateProcessNotifyRoutineCount 不为0，则逐一调用进程创建回调。
+				《驱动注册的回调》
+
+			如果 PspCreateThreadNotifyRoutineCount 不为0，则逐一调用线程创建回调。
+
+			将线程内核对象放入内核对象表中，返回线程句柄。
+
+			调用 KeReadyThread() 将进程放入 运行准备好，等待调度。
+				进一步调用  KiReadyThread()
+
+
+
     CsrClientCallServer() 通知 csrss.exe进程已经创建完了新的进程
     
     
