@@ -114,15 +114,21 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
     
         处理环境变量字符串（Ansi->Unicode）
         根据第一个参数或 命令行参数 获取应用程序路径
-        打开应用程序文件，创建文件的内存 Section
+        打开应用程序文件，创建文件的内存 Section，并且获取Section的基本信息
+        
+        如果设置了调试标记， 调用函数 DbgUiConnectToDbg()  创建调试端口，并设置给当前线程 TEB 
+            调试端口会被传递给 NtCreateProcessEx()
         
         调用 NtCreateProcess 创建一个进程对象
+            见后面一节分析
         
+        NtQueryInformationProcess() 获取在 NtCreateProcess中创建的PEB基地址
+            
         调用 BasePushProcessParameters 将进程的命令行参数写入新建进程
             即 PEB 结构体中的ProcessParameters成员：
             +0x010 ProcessParameters : _RTL_USER_PROCESS_PARAMETERS
         
-        如果不继承父进程句柄，那么对于CUI进程，则需要将 标准输入输出三个句柄复制到新进程
+        如果不继承父进程句柄，那么对于CUI进程，则需要将 标准输入输出错误三个句柄复制到新进程
             PRTL_USER_PROCESS_PARAMETERS ParametersInNewProcess;
             &ParametersInNewProcess->StandardInput; 
             // 表示取向对于指针 ParametersInNewProcess，成员StandardInput的地址
@@ -137,13 +143,14 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
             如果空间允许则还需要添加Guard页（修改最后一页为PAGE_GUARD）
             
         BaseInitializeContext() 为新的线程创建一个初始化上下文，即初始化一个 CONTEXT 结构体
-            其中会初始化其中的段寄存器，指令寄存器，栈寄存器等。
-            EIP = BaseProcessStartThunk
+            其中会初始化CONEXT的段寄存器，指令寄存器，栈寄存器等。
+            EIP = BaseProcessStartThunk 对于进程第一个线程/否则是 BaseThreadStartThunk 
             ESP = 刚建立的栈
             Eax = 从Image中读取TransferAddress      这个应该是模块入口
             Ebx = 参数，其实是PEB指针
             
         NtCreateThread() 创建并初始化线程对象
+            // 参见下面对 NtCreateProcess 函数的解析
         
         如果有调试标记，则调用 DbgUiConnectToDbg 通知调试器
         
@@ -154,23 +161,26 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
     NtCreateProcess() 内核中创建进程对象
 		首先判断调用来源，R3层的调用需要判断其参数有效性
 		调用函数 PspCreateProcess() 继续执行，该函数是NtCreateProcess的实际实现者，创建进程对象，并初始化
-			如果有父进程，则根据父进程的基础优先级和CPU亲核心设置子进程，否则单独设置。
+			如果有父进程，则根据父进程的基础优先级和CPU亲核性设置子进程，否则单独设置。
+            
 			根据参数获取进程映像，尝试获取调试端口对象和异常端口对象。
+            
 			调用 ObCreateObject() 方法创建 进程对象（新进程）。
 				调用 ObpAllocateObject() 分配对象并填充对象成员，分配内存，按照进程对象格式对内存进行填充。
-				创建的进程对象其实是 对象头 加 EPROCESS 结构体
+				创建的进程对象其实是 对象头 加 EPROCESS 结构体                
 
 			清空 EPROCESS 结构体，并对其中的成员进行初始化：
 			初始化线程列表，用于保存当前进程的线程
 			设置异常端口和调试端口  DebugPort ／ ExceptionPort
-			设置 设备映像 DeviceMap (确定其作用？？？)
+			设置 设备映像 DeviceMap (确定其作用？？？？？？)
 			设置会话ID，父进程ID等
 			调用 PspInitializeProcessSecurity 函数初始化进程的安全令牌，或者来自父进程或者来自系统初始化令牌
 
 			调用 MmCreateProcessAddressSpace() 函数创建地址空间，映射系统部分，包括hyper space
+                主要用于 克隆父进程的 对象表，如果没有父进程，则使用 ObInitSystem 进程中的对象表
 
 			调用 KeInitializeProcess() 函数初始化内核进程对象。
-				初始化进程对象的 标准分发对象头，其实就是设置类型并初始化等待列表头
+				初始化进程对象的 标准分发对象头，其实就是设置类型并初始化等待链表头（用于对象等待）
 				初始化其中的栈数量，准备好进程列表，线程列表头等
 				对于 i386 则还需要设置IOPL 标记。
 				
@@ -181,12 +191,13 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
 
 				KeAttachProcess() 用于将当前线程挂到新建的进程
 					将一个线程挂到目标进程地址空间
-					调用 KiAttachProcess() 函数线程到 新剑进程
+					调用 KiAttachProcess() 函数线程到 新建进程
+                        将线程挂到 另外一个进程中？？？？？？《原理与实现方法》
 
-					MiGetPdeAddress() 用于获取页框，初始化页帧
+				MiGetPdeAddress() 用于获取页框，初始化页帧
 
-					设置进程名称
-					调用 MmMapViewOfSection() 函数将映像文件映射进内存中。
+				设置进程名称
+				调用 MmMapViewOfSection() 函数将映像文件映射进内存中。？？？？？？映射模块的过程
 
 				最后从新建进程上分离，KeDetachProcess()
 
@@ -196,6 +207,8 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
 			调用 PspMapSystemDll() 函数映射 系统DLL到目标进程
 				调用 MmMapViewOfSection() 函数将 PspSystemDll 中指定的模块映射到系统中
 
+            调用 MmInitializeProcessAddressSpace() 克隆地址空间  ？？？？？？ 进程内存地址空间创建
+                
 			调用 ObInsertObject() 将进程对象 插入到对象列表中
 
 			如果父进程属于某个 工作集，则将新建进程放到这个工作集中
@@ -203,7 +216,7 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
 			将进程加入到活动进程列表，PsActiveProcessHead
 
 			调用 MmCreatePeb() 创建进程的PEB页，并且初始 PEB 值
-				挂接到目标进程中，创建 PEB 页面，设置PEB结构中的成员的值，去除挂接
+				挂接到目标进程中，创建 PEB 页面，设置PEB结构中的成员的值，从新建进程上Detach
 
 			设置安全属性／审计等一系列工作
 			
@@ -213,12 +226,12 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
 		调用 PspCreateThread() 继续创建线程
 			该函数创建和初始化线程对象，它是NtCreateThead 和 PsCreateSystemThread的实现基础
 
-			创建线程对象之前，先对传入参数进行校验，用户层调用，目标进程不能是系统进程。
+			创建线程对象之前，先对传入参数进行校验，用户层的调用，线程创建的目标进程不能是系统进程。
 
 			调用 ObCreateObject() 创建线程对象，类似与进程对象，线程对象体为 ETHREAD 结构体
-			在指定句柄表中创建一个句柄条目，并返回指向条目的句柄
+                在指定句柄表中创建一个句柄条目，并返回指向条目的句柄
 
-			初始化 LPC 使用的心好凉和 Lpc回复链，初始化Irp列表
+			初始化 LPC 使用的信号量和 Lpc回复链，初始化Irp列表
 
 			调用 MmCreateKernelStack() 函数创建线程的内核栈
 				分配物理内存，然后获取其虚拟内存。
@@ -247,13 +260,49 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
 			调用 KeReadyThread() 将进程放入 运行准备好，等待调度。
 				进一步调用  KiReadyThread()
 
-
-
+            线程创建，到线程被调度，到开始执行线程函数的一系列过程。？？？？？？
     CsrClientCallServer() 通知 csrss.exe进程已经创建完了新的进程
+        这个函数发送一个API请求到 Windows模拟子系统服务器，等待回复
+        
+        在 CSRSRC.dll 中响应该消息的是 BaseSrvCreateProcess() 函数 
+            调用 CsrCreateProcess() 创建 CSR_PROCESS 结构体和第一个 CSR_THREAD
+                首先 调用 CsrAllocateProcess() 分配进程结构体占用内存 
+                
+                初始化进程数据 
+                
+                调用 CsrAllocateThread() 分配线程结构体占用内存
+                
+                将线程结构体插入到进程结构体的 线程链表 中
+                
+                CsrInsertProcess() 将 进程结构体 插入到 进程列表中，即 CsrRootProcess 的 ListLink中                   
     
-    
+    待进一步详细了解内容：
+        
+        1. 线程创建，到线程被调度，到开始执行线程函数的一系列过程。？？？？？？
+        2. 进程内存地址空间创建
+        3. 映射模块的过程
+        
+        两个问题：
+        1. 将线程挂到 另外一个进程中？？？？？？《原理与实现方法》
+        2. DeviceMap (确定其作用？？？？？？)
         
 4. 异常处理 过程 SEH
+    
+    Trap Handler                    Debugger port       Debugger（first chance）
+         |                          
+         | Exception Record                             Frame-based handlers（如果没有处理函数，则会读取 AeDebug 注册表，是否调起调试器调试）
+         |                          
+    Exception Dispatcher            Debugger port       Debugger（second chance)
+    
+                                    Exception port      Environment subsystem
+                                    
+                                                        Kernel default handler(Unhandled exception filter)
+
+    AeDebug 中的注册表键值：Auto为0，Debugger包含Drwtsn32，
+    检查 LOCALE_MACHINE\Software\Microsoft\PCHealth\Error Reporting 是否为1
+    
+    然后启动 WER 对话框。
+                                                         
 5. TLS
 6. 系统调用
 7. 界面子系统（消息系统/对话框，模态与非模态）
