@@ -72,15 +72,16 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
 
 2. 堆 和 栈，运行时堆和线程堆
     进程/线程创建过程中，堆和栈的分配
-		进程的第一个线程栈是在 CreateProcessW 函数中通过跨进程操作分配内存来设置栈。
-		通过 CreateThread 创建的线程则在其调用的CreateRemoteThread 函数中进行栈创建
+		进程的第一个线程栈是在 CreateProcessW 函数中通过跨进程操作分配内存来设置的栈。
+		通过 CreateThread 创建的线程则在其调用的CreateRemoteThread 函数中进行栈创建。
     
-		堆创建： 
+    堆创建： 
     运行时堆： malloc / new 从运行时堆上分配内存
         在CRT初始化时，会调用到 heap_init 函数进行运行时堆的初始化。最终调用 Kernel32!HeapCreate 进行堆创建。
         
         如果模块采用动态链接形式编译，那么运行时库MSCRT*.dll加载时就已经初始化了，在模块入口处就不需要再初始化了。
         如果模块采用静态链接形式编译，运行时库链接到模块了，在模块加载时进入入口之前就要先执行运行时初始化代码。
+        这个初始化中就会进行该模块的运行时堆的创建。
         
     进程默认堆： GlobalAlloc / LocalAlloc 从该堆上分配内存
         可以通过函数 kernel32!GetProcessHeap() 获取当前进程的 进程默认堆。
@@ -98,6 +99,10 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
            +0x08c MaximumNumberOfHeaps : 0x10
            +0x090 ProcessHeaps     : 0x77294760  -> 0x003c0000  // 进程中的堆们   
            ......
+        
+        进程的默认堆是在进程第一个线程被调度执行时，通过APC回到用户空间时调用LdrInitializeThunk()，进而进行进程初始化。
+        其中会调用到LdrpInitializeProcess()函数，其中会首先 RtlInitializeHeapManager() 函数进行堆管理器初始化，然后调用
+        RtlCreateHeap()函数创建进程的默认堆。
 
 3. 进城创建，线程创建与调度
     由 CreateProcessW 发起
@@ -111,6 +116,8 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
               进程当前目录
               启动信息
               进程信息（返回值）
+    
+        直接调用 CreateProcessInternalW 函数，它是内部非导出函数。
     
         处理环境变量字符串（Ansi->Unicode）
         根据第一个参数或 命令行参数 获取应用程序路径
@@ -155,7 +162,12 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
         如果有调试标记，则调用 DbgUiConnectToDbg 通知调试器
         
         调用 CsrClientCallServer() 通知 CSRSS.exe进程进程创建完毕了
+            创建 CSR_PROCESS/CSR_THREAD 等结构体挂入Win32子系统管理器
+            设置异常接口 ExceptionPort等
             
+        准备好后，判断当前进程的创建参数，是否包含 CREATE_SUSPENDED 标记，如果不包含
+            调用 NtResumeThread 函数，恢复进程主线程的运行状态，等待CPU调度。
+        
         返回参数在前面过程中已经都填写完毕。
             
     NtCreateProcess() 内核中创建进程对象
@@ -304,8 +316,13 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
     然后启动 WER 对话框。
                                                          
 5. TLS
+
 6. 系统调用
+
 7. 界面子系统（消息系统/对话框，模态与非模态）
+
 8. 定时器
+
 9. 内核知识 APC DPC
+
 10. 句柄/事件（命名与匿名）/互斥提（Mutex）/信号量（Semophore）
