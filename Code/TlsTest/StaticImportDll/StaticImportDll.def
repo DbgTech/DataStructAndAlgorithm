@@ -1,0 +1,5 @@
+LIBRARY   StaticImportDll
+
+EXPORTS
+   StaticImport   @1
+

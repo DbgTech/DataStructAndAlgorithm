@@ -55,6 +55,15 @@
 
 使用类似二叉树的思想，将堆的高度限制为 logn，排序n个节点，时间复杂度最多也就是O(nlogn)，并且没有额外空间的使用，只需要n个空间的原始向量即可。
 
+### 字符串最长子串 ###
+
+给定一个输入文本文件，查找其中最常的重复子字符串。例如“Ask not what your country can do for you, but what you can do for your country”中最常的重复字符串就是“can do for you”，“your country”是第二长子串。如何编写解决这个问题的程序？
+
+二次循环，计算出所有的子串，然后找到最常重复子串。时间复杂读为O(n^2)
+
+
+使用后缀数组，时间复杂度为O(nlogn)。
+
 
 
 

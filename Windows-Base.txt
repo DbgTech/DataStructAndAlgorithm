@@ -2,73 +2,72 @@ Windows基础知识：
 
 1. 运行时（静态编译与动态编译）
 
-/MDd  /MD  -  Multi-threaded Debug DLL / Multi-threaded DLL
+    /MDd  /MD  -  Multi-threaded Debug DLL / Multi-threaded DLL
 
-0:000> k
-ChildEBP RetAddr  
-0037f760 50c6151e ntdll!RtlAllocateHeap
-0037f77c 50c70206 MSVCR90D!_heap_alloc_base+0x5e
-0037f7c4 50c6ffbf MSVCR90D!_nh_malloc_dbg+0x2c6
-0037f7e4 50c6ff6c MSVCR90D!_nh_malloc_dbg+0x7f
-0037f80c 50c7b5eb MSVCR90D!_nh_malloc_dbg+0x2c
-0037f82c 50c5db81 MSVCR90D!malloc+0x1b
-0037f848 01081fbe MSVCR90D!operator new+0x11
-0037f87c 010817b2 RuntimeTest!operator new+0x3e [f:\dd\vctools\crt_bld\self_x86\crt\src\newopnt.cpp @ 18]
-0037f88c 010815af RuntimeTest!operator new[]+0x12 [f:\dd\vctools\crt_bld\self_x86\crt\src\newaopnt.cpp @ 15]
-0037fad0 01081d58 RuntimeTest!wmain+0x19f [c:\users\administrator\desktop\runtimetest\runtimetest\runtimetest.cpp @ 49]
-0037fb20 01081b9f RuntimeTest!__tmainCRTStartup+0x1a8 [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 583]
-0037fb28 758a343d RuntimeTest!wmainCRTStartup+0xf [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 403]
-0037fb34 771c9832 kernel32!BaseThreadInitThunk+0xe
-0037fb74 771c9805 ntdll!__RtlUserThreadStart+0x70
-0037fb8c 00000000 ntdll!_RtlUserThreadStart+0x1b
+    0:000> k
+    ChildEBP RetAddr  
+    0037f760 50c6151e ntdll!RtlAllocateHeap
+    0037f77c 50c70206 MSVCR90D!_heap_alloc_base+0x5e
+    0037f7c4 50c6ffbf MSVCR90D!_nh_malloc_dbg+0x2c6
+    0037f7e4 50c6ff6c MSVCR90D!_nh_malloc_dbg+0x7f
+    0037f80c 50c7b5eb MSVCR90D!_nh_malloc_dbg+0x2c
+    0037f82c 50c5db81 MSVCR90D!malloc+0x1b
+    0037f848 01081fbe MSVCR90D!operator new+0x11
+    0037f87c 010817b2 RuntimeTest!operator new+0x3e [f:\dd\vctools\crt_bld\self_x86\crt\src\newopnt.cpp @ 18]
+    0037f88c 010815af RuntimeTest!operator new[]+0x12 [f:\dd\vctools\crt_bld\self_x86\crt\src\newaopnt.cpp @ 15]
+    0037fad0 01081d58 RuntimeTest!wmain+0x19f [c:\users\administrator\desktop\runtimetest\runtimetest\runtimetest.cpp @ 49]
+    0037fb20 01081b9f RuntimeTest!__tmainCRTStartup+0x1a8 [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 583]
+    0037fb28 758a343d RuntimeTest!wmainCRTStartup+0xf [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 403]
+    0037fb34 771c9832 kernel32!BaseThreadInitThunk+0xe
+    0037fb74 771c9805 ntdll!__RtlUserThreadStart+0x70
+    0037fb8c 00000000 ntdll!_RtlUserThreadStart+0x1b
 
-Load Module: C:\Users\Administrator\Desktop\RuntimeTest\Debug\RuntimeDll.dll
-DLL Alloc Buffer: 0x00348648
-Exe Alloc Buffer: 0x003486E8
+    Load Module: C:\Users\Administrator\Desktop\RuntimeTest\Debug\RuntimeDll.dll
+    DLL Alloc Buffer: 0x00348648
+    Exe Alloc Buffer: 0x003486E8
 
-如果是动态DLL链接编译的所有模块，EXE和DLL动态分配的内存可以在任何地方释放，
-因为它们都是调用 MSVCR*.dll 分配，释放也是调用这个模块。
+    如果是动态DLL链接编译的所有模块，EXE和DLL动态分配的内存可以在任何地方释放，
+    因为它们都是调用 MSVCR*.dll 分配，释放也是调用这个模块。
 
-/MTd  /MT  -  Multi-thread Debug / Multi-threaded 
+    /MTd  /MT  -  Multi-thread Debug / Multi-threaded 
 
-0:000> k
-ChildEBP RetAddr  
-0037f674 50af5d7e ntdll!RtlAllocateHeap
-0037f690 50ae0eb6 RuntimeDll!_heap_alloc_base+0x5e [f:\dd\vctools\crt_bld\self_x86\crt\src\malloc.c @ 105]
-0037f6d8 50ae0c3f RuntimeDll!_heap_alloc_dbg_impl+0x1f6 [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgheap.c @ 427]
-0037f6f8 50ae0bdc RuntimeDll!_nh_malloc_dbg_impl+0x1f [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgheap.c @ 239]
-0037f720 50ae068b RuntimeDll!_nh_malloc_dbg+0x2c [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgheap.c @ 296]
-0037f740 50ae93f1 RuntimeDll!malloc+0x1b [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgmalloc.c @ 56]
-0037f75c 50adf04e RuntimeDll!operator new+0x11 [f:\dd\vctools\crt_bld\self_x86\crt\src\new.cpp @ 59]
-0037f790 50adde32 RuntimeDll!operator new+0x3e [f:\dd\vctools\crt_bld\self_x86\crt\src\newopnt.cpp @ 18]
-0037f7a0 50add77a RuntimeDll!operator new[]+0x12 [f:\dd\vctools\crt_bld\self_x86\crt\src\newaopnt.cpp @ 15]
-0037f894 0108156c RuntimeDll!AllocateMem+0x2a [c:\users\administrator\desktop\runtimetest\runtimedll\runtimedll.cpp @ 20]
-0037fad0 01081d58 RuntimeTest!wmain+0x15c [c:\users\administrator\desktop\runtimetest\runtimetest\runtimetest.cpp @ 40]
-0037fb20 01081b9f RuntimeTest!__tmainCRTStartup+0x1a8 [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 583]
-0037fb28 758a343d RuntimeTest!wmainCRTStartup+0xf [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 403]
-0037fb34 771c9832 kernel32!BaseThreadInitThunk+0xe
-0037fb74 771c9805 ntdll!__RtlUserThreadStart+0x70
-0037fb8c 00000000 ntdll!_RtlUserThreadStart+0x1b
+    0:000> k
+    ChildEBP RetAddr  
+    0037f674 50af5d7e ntdll!RtlAllocateHeap
+    0037f690 50ae0eb6 RuntimeDll!_heap_alloc_base+0x5e [f:\dd\vctools\crt_bld\self_x86\crt\src\malloc.c @ 105]
+    0037f6d8 50ae0c3f RuntimeDll!_heap_alloc_dbg_impl+0x1f6 [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgheap.c @ 427]
+    0037f6f8 50ae0bdc RuntimeDll!_nh_malloc_dbg_impl+0x1f [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgheap.c @ 239]
+    0037f720 50ae068b RuntimeDll!_nh_malloc_dbg+0x2c [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgheap.c @ 296]
+    0037f740 50ae93f1 RuntimeDll!malloc+0x1b [f:\dd\vctools\crt_bld\self_x86\crt\src\dbgmalloc.c @ 56]
+    0037f75c 50adf04e RuntimeDll!operator new+0x11 [f:\dd\vctools\crt_bld\self_x86\crt\src\new.cpp @ 59]
+    0037f790 50adde32 RuntimeDll!operator new+0x3e [f:\dd\vctools\crt_bld\self_x86\crt\src\newopnt.cpp @ 18]
+    0037f7a0 50add77a RuntimeDll!operator new[]+0x12 [f:\dd\vctools\crt_bld\self_x86\crt\src\newaopnt.cpp @ 15]
+    0037f894 0108156c RuntimeDll!AllocateMem+0x2a [c:\users\administrator\desktop\runtimetest\runtimedll\runtimedll.cpp @ 20]
+    0037fad0 01081d58 RuntimeTest!wmain+0x15c [c:\users\administrator\desktop\runtimetest\runtimetest\runtimetest.cpp @ 40]
+    0037fb20 01081b9f RuntimeTest!__tmainCRTStartup+0x1a8 [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 583]
+    0037fb28 758a343d RuntimeTest!wmainCRTStartup+0xf [f:\dd\vctools\crt_bld\self_x86\crt\src\crtexe.c @ 403]
+    0037fb34 771c9832 kernel32!BaseThreadInitThunk+0xe
+    0037fb74 771c9805 ntdll!__RtlUserThreadStart+0x70
+    0037fb8c 00000000 ntdll!_RtlUserThreadStart+0x1b
 
-对于静态链接形式，运行时库相关内容被嵌入到对应模块，分配的内存是从当前模块初始化的堆上分配。
-而对于动态链接的模块分配内存，无法在静态链接CRT的模块中释放，反过来亦然。
+    对于静态链接形式，运行时库相关内容被嵌入到对应模块，分配的内存是从当前模块初始化的堆上分配。
+    而对于动态链接的模块分配内存，无法在静态链接CRT的模块中释放，反过来亦然。
 
-那么同理推之，如果两个模块都是静态链接CRT方式，那么它们动态分配内存也无法相互释放。
+    那么同理推之，如果两个模块都是静态链接CRT方式，那么它们动态分配内存也无法相互释放。
+    所以模块间最好不要相互传递自己通过CRT库函数动态分配的内存。
 
-所以模块间最好不要相互传递自己通过CRT库函数动态分配的内存。
+    GlobalAlloc     // 在32位的Windows上已经简化为从进程默认堆上分配内存
+    HeapAlloc       // 从指定堆上分配内存，有堆句柄HANDLE hHeap指定堆
+    LocalAlloc      // 基本等价于GlobalAlloc，16位系统上则是另外一回事
+    malloc          // 从运行时堆上分配
+    new             // 同malloc
+    VirtualAlloc    // 系统调用，并非从堆上分配内存，而是直接从地址空间划出内存空间
 
-GlobalAlloc     // 在32位的Windows上已经简化为从进程默认堆上分配内存
-HeapAlloc       // 从指定堆上分配内存，有堆句柄HANDLE hHeap指定堆
-LocalAlloc      // 基本等价于GlobalAlloc，16位系统上则是另外一回事
-malloc          // 从运行时堆上分配
-new             // 同malloc
-VirtualAlloc    // 系统调用，并非从堆上分配内存，而是直接从地址空间划出内存空间
+    ===============================================================================================
+    msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软提供和编译，只供操作系统的模块使用。
+    而后者是可以下载安装的运行时支持程序包中的模块，用于支持用户程序。
 
-===============================================================================================
-msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软提供和编译，只供操作系统的模块使用。
-而后者是可以下载安装的运行时支持程序包中的模块，用于支持用户程序。
-
-代码参看：RuntimeTest
+    代码参看：code\RuntimeTest
 
 2. 堆 和 栈，运行时堆和线程堆
     进程/线程创建过程中，堆和栈的分配
@@ -80,7 +79,7 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
         在CRT初始化时，会调用到 heap_init 函数进行运行时堆的初始化。最终调用 Kernel32!HeapCreate 进行堆创建。
         
         如果模块采用动态链接形式编译，那么运行时库MSCRT*.dll加载时就已经初始化了，在模块入口处就不需要再初始化了。
-        如果模块采用静态链接形式编译，运行时库链接到模块了，在模块加载时进入入口之前就要先执行运行时初始化代码。
+        如果模块采用静态链接形式编译，运行时库链(CRT)链接模块了，在模块加载时进入入口之前就要先执行运行时初始化代码。
         这个初始化中就会进行该模块的运行时堆的创建。
         
     进程默认堆： GlobalAlloc / LocalAlloc 从该堆上分配内存
@@ -101,10 +100,10 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
            ......
         
         进程的默认堆是在进程第一个线程被调度执行时，通过APC回到用户空间时调用LdrInitializeThunk()，进而进行进程初始化。
-        其中会调用到LdrpInitializeProcess()函数，其中会首先 RtlInitializeHeapManager() 函数进行堆管理器初始化，然后调用
-        RtlCreateHeap()函数创建进程的默认堆。
+        其中会调用到 LdrpInitializeProcess() 函数，其中会首先调用 RtlInitializeHeapManager() 函数进行堆管理器初始化，
+        然后调用 RtlCreateHeap() 函数创建进程的默认堆。
 
-3. 进城创建，线程创建与调度
+3. 进程创建，线程创建与调度
     由 CreateProcessW 发起
         参数：应用程序名字
               命令行
@@ -144,7 +143,7 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
         创建线程：
         BaseCreateStack() 首先为新进程中的线程创建 栈
             其中栈大小以及提交值 都是 ImageInformation结构体成员指定，比如ImageInformation.CommittedStackSize
-            其实这个结构体内容是从 进程文件（Exe）中提取的信息
+            这个结构体内容是从 进程文件（exe）中提取的信息
             
             在新进程中分配指定栈大小内存，但是只提交其中一部分。
             如果空间允许则还需要添加Guard页（修改最后一页为PAGE_GUARD）
@@ -157,13 +156,13 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
             Ebx = 参数，其实是PEB指针
             
         NtCreateThread() 创建并初始化线程对象
-            // 参见下面对 NtCreateProcess 函数的解析
+            // 参见下面对 NtCreateThread 函数的解析
         
         如果有调试标记，则调用 DbgUiConnectToDbg 通知调试器
         
         调用 CsrClientCallServer() 通知 CSRSS.exe进程进程创建完毕了
             创建 CSR_PROCESS/CSR_THREAD 等结构体挂入Win32子系统管理器
-            设置异常接口 ExceptionPort等
+            设置异常端口 ExceptionPort等
             
         准备好后，判断当前进程的创建参数，是否包含 CREATE_SUSPENDED 标记，如果不包含
             调用 NtResumeThread 函数，恢复进程主线程的运行状态，等待CPU调度。
@@ -196,7 +195,7 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
 				初始化其中的栈数量，准备好进程列表，线程列表头等
 				对于 i386 则还需要设置IOPL 标记。
 				
-			调用 ObInitProcess() 函数创建进程的 对象表，有父进程则从父进程拷贝带有继承标记的对象元素
+			调用 ObInitProcess() 函数创建进程的 对象表，有父进程则从父进程拷贝带有继承标记的内核对象
 
 			调用 MmInitializeProcessAddressSpace() 初始化新的映像 地址空间
 				初始化工作集和互斥体，用于支持分页
@@ -253,7 +252,13 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
 			调用 KeInitializeThread() 函数 初始化线程对象。优先级，亲和性和初始参数都是从上下文帧获取
 				其中指定了线程第一次被调度时使用的内核函数（第一次调度肯定是先从内核开始执行）
 					用户线程从 PspUserThreadStartup() 函数起始
+                        函数中设置线程TEB的部分成员值后，插入一个用户APC，运行的函数为 ntdll!LdrInitializeThunk
+                        它即是进程第一个线程开始运行时要调用的函数。
+                        LdrInitializeThunk() 函数中会进行进程的一些初始化。
+                        
 					内核线程从 PspSystemThreadStartup() 函数起始
+                        try catch中直接调用 线程函数即可。
+                        
 				thread中的 ServiceTable成员设置，即 SSDT，普通线程指向 KeServiceDescriptorTable[0]
 
 				设置 APC 使用的列表
@@ -273,6 +278,7 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
 				进一步调用  KiReadyThread()
 
             线程创建，到线程被调度，到开始执行线程函数的一系列过程。？？？？？？
+            
     CsrClientCallServer() 通知 csrss.exe进程已经创建完了新的进程
         这个函数发送一个API请求到 Windows模拟子系统服务器，等待回复
         
@@ -291,11 +297,125 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
     待进一步详细了解内容：
         
         1. 线程创建，到线程被调度，到开始执行线程函数的一系列过程。？？？？？？                        
+            线程创建后，设置为 Ready 状态，然后将其放入调度队列。
+            
+            调用对应的函数，对于用户线程即  PspUserThreadStartup 函数。
+            BaseInitializeContext
+                /* Setup the Initial Win32 Thread Context */
+                Context->Eax = (ULONG)StartAddress;
+                Context->Ebx = (ULONG)Parameter;
+                Context->Esp = (ULONG)StackAddress;
+                
+                /* For Threads */
+                Context->Eip = (ULONG)BaseThreadStartupThunk;
+                
+                /* For first thread in a Process */
+                Context->Eip = (ULONG)BaseProcessStartThunk;                
+                
+            PspCreateThread
+                Thread->StartAddress = (PVOID)KeGetContextPc(ThreadContext); EIP
+                Thread->Win32StartAddress = (PVOID)KeGetContextReturnRegister(ThreadContext); EAX
+            
+            调用 KiInitializeContextThread 函数初始化栈帧信息（内核栈帧以及陷阱帧）
+            使用 InitFrame 的 CtxSwitchFrame 中的内容作为切换时参数获取位置。
+            typedef struct _KSWITCHFRAME
+            {
+                PVOID ExceptionList;
+                BOOLEAN ApcBypassDisable;
+                PVOID RetAddr;
+            } KSWITCHFRAME, *PKSWITCHFRAME;
+            
+            typedef struct _KSTART_FRAME
+            {
+                PKSYSTEM_ROUTINE SystemRoutine;
+                PKSTART_ROUTINE StartRoutine;
+                PVOID StartContext;
+                BOOLEAN UserThread;
+            } KSTART_FRAME, *PKSTART_FRAME;            
+            
+            typedef struct _KUINIT_FRAME
+            {
+                KSWITCHFRAME CtxSwitchFrame;
+                KSTART_FRAME StartFrame;
+                KTRAP_FRAME TrapFrame;
+                FX_SAVE_AREA FxSaveArea;
+            } KUINIT_FRAME, *PKUINIT_FRAME;
+            
+            设置 StartFrame的 StartContext 为 
+                              StartRoutine 为 Thread->StartAddress
+                              SystemRoutine 为 PspUserThreadStartup
+            设置 CtxSwitchFrame 的 RetAddr 为 KiThreadStartup 函数，开启Apc绕过禁止标记
+                              将 CtxSwitchFrame 设置给新建线程的 ETHREAD 的 KernelStack
+            
+            线程切换的起点：
+                调度器调度完成后，会调用 KiExitDispatcher() 函数，其中会将接下来要调度线程
+                设置给 Prcb 的 CurrentThread，并且用当前正执行线程的 ETHREAD 调用 KiSwapContext()
+                进行上下文切换。
+                
+                KiSwapContext() -> KiSwapContextInternal() -> KiSwapContextEntry() -> KiSwitchThreads()
+                -> KiSwapContextExit()
+                
+                KiSwapContext 首先保存之前线程的寄存器内容， 等切换完毕，再将目标线程的内核栈上
+                寄存器恢复到对应寄存器中。
+                
+                KiSwapContextExit() 中会判断 是否要切换进程，如果切换则要重置 CR3，清空TLB。（地址空间）
+                
+                依次返回，等回到 KiSwapContext 时，就依次按照之前被调度失去CPU时的栈帧一次返回执行。
+                
+                对于新建线程，从 KiSwapContextExit 函数返回时，已经切入新线程栈帧了，这时新线程栈帧如上
+                KUINIT_FRAME 结构体内容形式，在 KiSwapContextExit 中使用了 ExceptionList/ApcBypassDisable两个
+                成员，所以在 KiSwitchThreads 中首先将 esp 出栈两次，然后 执行 ret 指令，直接返回 RetAddr 继续执行
+
+            RetAddr 返回地址为 KiThreadStartup() 函数
+                其中获取之前设置的线程栈帧信息，调用 StartFrame->SystemRoutine 对应函数，即 PspUserThreadStartup()
+                
+                PspUserThreadStartup() 函数中比较重要的内容即是给当前线程插入了一个APC，APC函数为 ntdll!LdrInitializeThunk               
+                
+                KiThreadStartup()最后调用 KiServiceExit2()函数用 构造的TrapFrame 返回到 R3。
+            
+            当线程要返回R3时，首先会判断当前线程上是否有APC，对于新建线程第一次返回Ring3 都有APC插入（即上面内核中插入）
+            执行APC，ntdll!LdrInitializeThunk
+            
+                ntdll!LdrInitializeThunk() 对 进程第一个线程，要对进程环境进行初始化，调用 LdrpInitializeProcess
+                    LdrpInitializeProcess() 函数初始化 进程默认堆，加载进程 exe 导入表模块等一系列进程初始化。
+                
+                如果非进程第一个线程，则调用 LdrpInitializeThread 初始化线程即可。            
+                
+                最后调用 NtTestAlert() 遍历当前线程所有的用户 APC。
+                
+            当处理完所有 APC 后，则按照预先设置栈返回到 R3层，其中返回 函数为 BaseThreadStartupThunk 或 BaseProcessStartThunk
+                在调用 BaseInitializeContext() 函数时设置。
+            
+            BaseThreadStartupThunk 或 BaseProcessStartThunk，会将 EAX 中保存的 线程函数地址 作为参数分别调用
+                BaseProcessStartThunk -> BaseProcessStartup
+                BaseThreadStartupThunk -> BaseThreadStartup                
+                如此便让线程执行起来了。
+				
+				Win7上，上述两个函数都已经变成了 ntdll!_RtlUserThreadStart->ntdll!__RtlUserThreadStart->kernel32!BaseThreadInitThunk
+            
+			调试可以参见 ThreadCreateTest 例子中代码，调试上述R3层的过程。
         2. 进程内存地址空间创建
+            
         3. 映射模块的过程
-        
+            
+            
         两个问题：
         1. 将线程挂到 另外一个进程中？？？？？？《原理与实现方法》
+			所有的进程共享内核空间，如果在线程在内核中执行，不需要访问用户内存，则不需要进行 进程挂靠。
+			但是在某些时候，比如创建进程/创建线程时，需要操作被创建进程的地址空间，这时就需要进程挂靠。
+			
+			在 Windows 中，一个进程实际上只是意味着一个用户(地址)空间，说一个线程属于某个进程的意思是它使用的是某个
+			特定的用户空间，系统空间则是由所有线程共用的。“某个特定的用户空间”是什么意思呢？实质上就是一个具体的页面
+			映射方案，或者一套具体的映射目录和页面表，以及相关的其它数据结构。而所谓“切换到某个进程的用户空间”， 就是
+			把这套具体的映射目录和页面表装入 CPU 中的页面映射机构，使其真正发生作用。当然，在完成了有关的操作以后还要
+			回到原来的用户空间，否则就无法从内核“返回”自己的用户空间了。
+			
+			所以简单说 进程挂靠就是将 当前的线程切换到目标进程的地址空间，即使用目标进程的页面映射表（修改CR3），同时
+			修改当前线程所属的进程，即修改  Thread->ApcState.Process = Process;
+			
+			KeAttachProcess() -> KiAttachProcess() -> KiMoveApcState()/KiSwapProcess() -> Ke386SetPageTableDirectory()			
+				KiAttachProcess() 中将APC状态进行保存，同时切换当前的页表基址，即CR3寄存器内容。
+							
         2. DeviceMap (确定其作用？？？？？？)
         
 4. 异常处理 过程 SEH
@@ -314,16 +434,443 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
     检查 LOCALE_MACHINE\Software\Microsoft\PCHealth\Error Reporting 是否为1
     
     然后启动 WER 对话框。
-                                                         
+	
+	
+	一旦代码发生异常，CPU会马上停止当前执行代码，根据异常代码查找异常表，然后跳转到异常处理函数执行。
+	
+	以 Int 3 断点指令为例，当CPU执行到某条指令是 Int 3时，CPU就会从 IDT表中查找 3号中断对应的处理函数，
+	
+	1: kd> !idt -a
+		Dumping IDT: 807dc020
+		00:	83e91fc0 nt!KiTrap00
+		01:	83e92150 nt!KiTrap01
+		02:	Task Selector = 0x0058
+		03:	83e925c0 nt!KiTrap03
+		04:	83e92748 nt!KiTrap04
+		05:	83e928a8 nt!KiTrap05
+		06:	83e92a1c nt!KiTrap06
+		07:	83e93018 nt!KiTrap07
+		08:	Task Selector = 0x0050
+		09:	83e93478 nt!KiTrap09
+		0a:	83e9359c nt!KiTrap0A
+		0b:	83e936dc nt!KiTrap0B
+		0c:	83e9393c nt!KiTrap0C
+		0d:	83e93c2c nt!KiTrap0D
+		0e:	83e942fc nt!KiTrap0E
+		0f:	83e946b0 nt!KiTrap0F
+		10:	83e947d4 nt!KiTrap10
+		11:	83e94914 nt!KiTrap11
+		12:	Task Selector = 0x00A0
+		13:	83e94a80 nt!KiTrap13
+		14:	83e946b0 nt!KiTrap0F
+		15:	83e946b0 nt!KiTrap0F	
+	
+	从中断表中查表可知，函数地址为 0x83e925c0（000825c0 83e9ee00）即函数为 nt!KiTrap03。
+	
+	注：这里可能有个疑问，CPU是如何做到有 0xcc 指令，去转向查表，找函数的呢？
+	    这就涉及到 CPU 的内部设计了，微指令，这里就不做更多探究了。
+		
+	下面把 nt!KiTrap03 的汇编代码列举一下（Win7 X86）。
+		nt!KiTrap03:
+		83e925c0 6a00            push    0
+		83e925c2 66c74424020000  mov     word ptr [esp+2],0
+		83e925c9 55              push    ebp
+		83e925ca 53              push    ebx
+		83e925cb 56              push    esi
+		83e925cc 57              push    edi
+		83e925cd 0fa0            push    fs
+		83e925cf bb30000000      mov     ebx,30h
+		83e925d4 668ee3          mov     fs,bx
+		83e925d7 648b1d00000000  mov     ebx,dword ptr fs:[0]
+		83e925de 53              push    ebx
+		83e925df 83ec04          sub     esp,4
+		83e925e2 50              push    eax
+		83e925e3 51              push    ecx
+		83e925e4 52              push    edx
+		83e925e5 1e              push    ds
+		83e925e6 06              push    es
+		83e925e7 0fa8            push    gs
+		83e925e9 66b82300        mov     ax,23h
+		83e925ed 83ec30          sub     esp,30h
+		83e925f0 668ed8          mov     ds,ax
+		83e925f3 668ec0          mov     es,ax
+		83e925f6 8bec            mov     ebp,esp
+		83e925f8 f744247000000200 test    dword ptr [esp+70h],20000h
+		83e92600 7596            jne     nt!V86_kit3_a (83e92598)
+		83e92602 648b0d24010000  mov     ecx,dword ptr fs:[124h]
+		83e92609 fc              cld
+		83e9260a 83652c00        and     dword ptr [ebp+2Ch],0
+		83e9260e f64103df        test    byte ptr [ecx+3],0DFh
+		83e92612 0f8500ffffff    jne     nt!Dr_kit3_a (83e92518)
+		83e92618 8b5d60          mov     ebx,dword ptr [ebp+60h]
+		83e9261b 8b7d68          mov     edi,dword ptr [ebp+68h]
+		83e9261e 89550c          mov     dword ptr [ebp+0Ch],edx
+		83e92621 c74508000ddbba  mov     dword ptr [ebp+8],0BADB0D00h
+		83e92628 895d00          mov     dword ptr [ebp],ebx
+		83e9262b 897d04          mov     dword ptr [ebp+4],edi
+		83e9262e 803dd963f98300  cmp     byte ptr [nt!PoHiberInProgress (83f963d9)],0
+		83e9262e 803dd963f98300  cmp     byte ptr [nt!PoHiberInProgress (83f963d9)],0
+		83e92635 7507            jne     nt!KiTrap03+0x7e (83e9263e)
+		83e92637 f0ff05fcc1f883  lock inc dword ptr [nt!KiHardwareTrigger (83f8c1fc)]
+		83e9263e b800000000      mov     eax,0
+		83e92643 f6457202        test    byte ptr [ebp+72h],2
+		83e92647 752f            jne     nt!KiTrap03+0xb8 (83e92678)
+		83e92649 f6456c01        test    byte ptr [ebp+6Ch],1
+		83e9264d 7508            jne     nt!KiTrap03+0x97 (83e92657)
+		83e9264f f6457102        test    byte ptr [ebp+71h],2
+		83e92653 740a            je      nt!KiTrap03+0x9f (83e9265f)
+		83e92655 eb07            jmp     nt!KiTrap03+0x9e (83e9265e)
+		83e92657 66837d6c1b      cmp     word ptr [ebp+6Ch],1Bh
+		83e9265c 751a            jne     nt!KiTrap03+0xb8 (83e92678)
+		83e9265e fb              sti
+		83e9265f 8bf1            mov     esi,ecx
+		83e92661 8bfa            mov     edi,edx
+		83e92663 8bd0            mov     edx,eax
+		83e92665 8b5d68          mov     ebx,dword ptr [ebp+68h]
+		83e92668 4b              dec     ebx
+		83e92669 b903000000      mov     ecx,3
+		83e9266e b803000080      mov     eax,80000003h
+		83e92673 e814f7ffff      call    nt!CommonDispatchException (83e91d8c)
+		83e92678 648b1d24010000  mov     ebx,dword ptr fs:[124h]
+		83e9267f 8b5b50          mov     ebx,dword ptr [ebx+50h]
+		83e92682 83bb4801000000  cmp     dword ptr [ebx+148h],0
+		83e92689 74d3            je      nt!KiTrap03+0x9e (83e9265e)
+		83e9268b 6a03            push    3
+		83e9268d e806270000      call    nt!Ki386VdmReflectException_A (83e94d98)
+		83e92692 66a9ffff        test    ax,0FFFFh
+		83e92696 74c7            je      nt!KiTrap03+0x9f (83e9265f)
+		83e92698 e95bf5ffff      jmp     nt!KiExceptionExit (83e91bf8)
+		83e9269d 8d4900          lea     ecx,[ecx]	
+
+		代码虽然都列举出来了，但其实里面就那么几个关键点。
+			首先要保存当前CPU的执行环境，由于之前CPU可能出于R3，也可能处理R0，无论哪一层，在完成异常处理后
+		还需要返回原来地方继续执行，所以这里要将环境保存一下。（中断发生时使用当前任务的内核栈/在内核执行则
+		直接使用当前的内核栈）
+		
+			再者就是要设置CPU处理异常的内核环境，其实和系统调用类似。
+			
+			最后调用异常处理的通用函数 nt!CommonDispatchException 对断点异常进行处理。
+	
+	nt!CommonDispatchException 以及之后的代码逻辑：
+	
+	nt!CommonDispatchException -> nt!KiDispatchException
+	
+	函数 nt!KiDispatchException 根据异常码 ExceptionRecord->ExceptionCode 对异常进行处理。
+		断点异常，则将上下文中的 EIP - 1，这样就退回了 0xCC 所在地址。
+	
+		如果是内核中发生了异常，且是第一次发生异常，
+			首先判断是否存在内核调试器，存在内核调试器则听到调试器中。
+				调试器处理了异常，则直接返回继续执行。
+			如果调试器不处理该异常，则调用 nt!RtlDispatchException() 进行内核异常分发
+				如果有异常处理器对异常进行了处理，则返回继续执行。否则继续抛出异常。
+				
+			无论继续抛出异常/还是不处理直接走到默认，都会进入二次异常异常处理逻辑。
+				首先给调试器第二次处理的机会，即如果有调试器则停到调试器。
+				
+				否则直接调用 KeBugCheckEx 进入到 可控的Crash，即蓝屏。
+				
+		如果异常发生在R3层，
+			如果进程在R3层被调试，且异常是内核调试器异常，则判断是否有内核调试器。
+			如果进程没有被调试，则直接判断是否有内核调试器在，有则通知内核调试器。
+			
+			调用 DbgkForwardException 将异常转发给调试器
+				如果处理了异常，则直接退出，继续执行。
+				
+			如果没有调试器，Windows子系统也没有处理，则将异常信息复制给R3栈，然后退回R3进行异常分发
+				此处重新构造了栈帧，用于退回R3时执行指定的函数。
+				返回R3则从 ntdll!KeUserExceptionDispatcher() 函数开始执行。
+			
+			如果R3层异常分发时，依旧没有处理该异常，在R3层会发起二次异常处理。
+				二次异常处理
+			
+			二次异常处理时：
+				首先仍然是转发给调试器，如果调试器处理，则继续执行。
+				
+				否则转发给 Windows子系统异常端口，有Windows子系统来处理。这里通常是弹窗，提醒用户。
+				
+				如果依然处理不了，则最后中断当前线程，最终导致进程终止。
+				
+	至于R3层异常分发，以及 异常处理函数调用，栈展开等操作可以参考如下：
+		https://dbgtech.github.io/2017/07/26/VS2008-Windows-Try-Except-Finally.html
+		https://dbgtech.github.io/2017/06/14/Win32-SEH-Internals.html
+		
+		X86上 __try 嵌套与并列 都是通过 scopetable 来实现。
+			并列的 __try 则通过给每个分配一个 trylevel，这样第一个__try时，设置为0，第二个设置为1
+			嵌套的 __try 则是通过在每一层加1，实现不同层索引不同的 处理函数。
+			
+		X64上 异常处理是放到PE文件的异常段中的，RUNTIME_FUNCTION 结构表示每一个非页函数。
+			其包含函数的起始地址/结束地址，以及异常处理结构 _UNWIND_INFO 的偏移，在_UNWIND_INFO中包含了当前
+		函数进行异常处理的信息，其中如果有 __try语句，则 ExceptionData及其之后数据为 _SCOPE_TABLE 结构，用于
+		表示当前 __try 语句的嵌套与并列 关系，
+			x64上则是通过表项的先后来对应于try的先后与内外层。对于并列的多个try，先出现的try语句对应于ScopeTable中
+		index较小的项；对于嵌套的try，最内层的try在ScopeTable中index越小，即遍历时要先遍历最内层try，再遍历外层try语句。
+		
+		
+	其实对于断点异常来说：
+		第一异常时，就会通知调试器，调试器接到通知，则会将代码中设置的断点指令 0xCC 恢复成原指令。并告知内核
+	异常已经处理，这时就会继续执行，执行断点所在的原始程序指令。（如果是断点指令，内核中会将 EIP-1，这样就回退
+	到设置断点的地址的地址处）
+
 5. TLS
+    TLS的全称为 Thread Local Storage，即线程局部存储。在进程中，所有线程共享进程的地址空间，所以对于一个变量
+	或一块内存，只要一个线程可以访问，进程的其他线程只要能拿到地址值也就可以访问。所以从这个意义上说，整个用户
+	空间都是该进程所有线程共享的，不存在只归一个线程使用的变量或数据结构。但是，一般来说程序对变量或数据结构的
+	访问都是通过变量名，编译链接后就是地址值。要是不知道一个变量的地址，实际上也就无法对其访问。从这方面来说，
+	则该变量或数据结构只归一个线程使用。
+	
+	程序的局部变量都是在线程栈上分配，所以TLS只对全局变量或静态变量才有意义。
+	
+	TLS有两种，一种是静态TLS，另外一种是动态TLS。静态TLS依赖于编译器，即在要实现线程局部存储的全局变量前添加
+	特殊标记，从而生成的代码中对变量访问使用特殊方式。
+		__declspec(thread) DWORD something = 0; // VC中 __declspec(thread) 表示将变量something设置为TLS变量
+		
+	动态TLS是通过一组库函数实现，与编译器没有关系。
+		TlsAlloc() / TlsSetValue / TlsGetValue / TlsFree 
+		
+	//////////////////////////////////////////////////////////////////////////////////
+	对于动态的 TLS，可用的操作函数就是 TlsAlloc() / TlsSetValue / TlsGetValue / TlsFree 四个，这里看一下Win7
+	的 TlsAlloc 和 TlsSetValue 
+	
+	DWORD __stdcall TlsAlloc()
+	{
+	  unsigned __int32 pTeb; // esi@1
+	  int pPEB; // edi@1
+	  int v2; // eax@3
+	  PVOID v3; // eax@3
+	  ULONG v6; // esi@10
+	  int v7; // [sp+Ch] [bp-4h]@2
+	  DWORD v8; // [sp+Ch] [bp-4h]@5
+
+	  pTeb = __readfsdword(0x18);
+	  pPEB = *(_DWORD *)(pTeb + 0x30);
+	  RtlAcquirePebLock();
+	  while ( 1 )
+	  {
+		v8 = RtlFindClearBitsAndSet(*(PRTL_BITMAP *)(pPEB + 0x40), 1u, 0);
+		if ( v8 != 0xFFFFFFFF )
+		{
+		  RtlReleasePebLock();
+		  *(_DWORD *)(pTeb + 4 * v8 + 0xE10) = 0;
+		  return v8;
+		}
+		v7 = *(_DWORD *)(pTeb + 0xF94);
+		if ( v7 )
+		  break;
+		RtlReleasePebLock();
+		v2 = KernelBaseGetGlobalData();
+		v3 = RtlAllocateHeap(*(HANDLE *)(*(_DWORD *)(__readfsdword(24) + 48) + 24), *(_DWORD *)(v2 + 44) | 8, 0x1000u);
+		if ( !v3 )
+		  goto LABEL_9;
+		*(_DWORD *)(pTeb + 0xF94) = v3;
+		RtlAcquirePebLock();
+	  }
+	  v6 = RtlFindClearBitsAndSet(*(PRTL_BITMAP *)(pPEB + 336), 1u, 0);
+	  RtlReleasePebLock();
+	  if ( v6 != -1 )
+	  {
+		*(_DWORD *)(v7 + 4 * v6) = 0;
+		return v6 + 64;
+	  }
+	LABEL_9:
+	  BaseSetLastNTError(0xC0000017);
+	  return -1;
+	}
+	
+	fs:0x18 是指向 TEB自身的指针, 其 0x30偏移处则是 进程 PEB的地址
+	0:001> dt -r 7efda000 _TEB
+	ntdll!_TEB
+	   +0x000 NtTib            : _NT_TIB
+		  ......
+		  +0x014 ArbitraryUserPointer : (null) 
+		  +0x018 Self             : 0x7efda000 _NT_TIB
+	   +0x01c EnvironmentPointer : (null) 	
+	   +0x020 ClientId         : _CLIENT_ID
+	   +0x028 ActiveRpcHandle  : (null) 
+	   +0x02c ThreadLocalStoragePointer : (null) 
+	   +0x030 ProcessEnvironmentBlock : 0x7efde000 _PEB
+	   +0x034 LastErrorValue   : 0
+	   +0x038 CountOfOwnedCriticalSections : 0	   
+	   ......
+	   +0xe0c DeallocationStack : 0x022d0000 
+	   +0xe10 TlsSlots         : [64] (null) 
+	   +0xf10 TlsLinks         : _LIST_ENTRY [ 0x0 - 0x0 ]
+	   +0xf18 Vdm              : (null) 	   
+	   ......
+	   +0xf90 ThreadPoolData   : (null) 
+	   +0xf94 TlsExpansionSlots : (null) 
+	   +0xf98 MuiGeneration    : 0
+	   ......
+	   
+	TlsAlloc 首先 从PEB 0x40偏移处 计算 RTL_BITMAP 结构体表示的位图中的是否有为0的位,此处为变量 TlsBitmap, 类型为_RTL_BITMAP
+	0:001> dt 7efde000 _PEB
+	ntdll!_PEB
+	   +0x000 InheritedAddressSpace : 0 ''
+	   +0x001 ReadImageFileExecOptions : 0 ''
+	   ......
+	   +0x038 ApiSetMap        : 0x00040000 
+	   +0x03c TlsExpansionCounter : 0
+	   +0x040 TlsBitmap        : 0x77094250 
+	   +0x044 TlsBitmapBits    : [2] 0x7ff
+	   +0x04c ReadOnlySharedMemoryBase : 0x7efe0000 
+	   ......
+	   +0x14c PostProcessInitRoutine : (null) 
+	   +0x150 TlsExpansionBitmap : 0x77094248 
+	   +0x154 TlsExpansionBitmapBits : [32] 1
+	   +0x1d4 SessionId        : 1
+	   ......
+	   
+	typedef struct _RTL_BITMAP
+	{
+		ULONG SizeOfBitMap;
+		PULONG Buffer;
+	} RTL_BITMAP, *PRTL_BITMAP;
+	
+	其中Buffer指向 PEB中的 TlsBitmapBits(两个LONG元素的数组)，64位用于表示当前进程的动态TLS数。
+	TLS实际是存储在 TEB中,它有一个成员是 TlsSlots，其正好是大小为64的指针数组，用于对应PEB中的64位的位图。
     
-    
-    
-    
+	如果预留的 64 个动态TLS被分配完毕，则使用 PEB中 0xF94偏移处的 TlsExpansionSlots 字段，它是一个指针，指向
+	扩展的动态 TLS，扩展的TLS槽需要事实分配，大小为4K，即1024个槽位，正好对应PEB中0x150处的TlsExpansionBitmapBits
+	成员，即扩展TLS位图，位图大小为128字节，即1024位。与预留的 TLS 机制类似。
+	
+	BOOL __stdcall TlsSetValue(DWORD dwTlsIndex, LPVOID lpTlsValue)
+	{
+	  unsigned __int32 pTeb; // esi@1
+	  _DWORD *v3; // eax@3
+	  __int16 **v4; // eax@4
+
+	  pTeb = __readfsdword(0x18);
+	  if ( dwTlsIndex < 64 )
+	  {
+		*(_DWORD *)(pTeb + 4 * dwTlsIndex + 0xE10) = lpTlsValue;
+	  }
+	  else
+	  {
+		if ( dwTlsIndex - 64 >= 1024 )
+		{
+		  BaseSetLastNTError(0xC000000D);
+		  return 0;
+		}
+		v3 = *(_DWORD **)(pTeb + 0xF94);
+		if ( !v3 )
+		{
+		  v4 = KernelBaseGetGlobalData();
+		  v3 = RtlAllocateHeap(
+				 *(HANDLE *)(*(_DWORD *)(__readfsdword(0x18) + 0x30) + 0x18),
+				 (unsigned int)v4[11] | 8,
+				 0x1000u);
+		  if ( !v3 )
+		  {
+			BaseSetLastNTError(0xC0000017);
+			return 0;
+		  }
+		  *(_DWORD *)(pTeb + 0xF94) = v3;
+		}
+		v3[dwTlsIndex - 64] = lpTlsValue;
+	  }
+	  return 1;
+	}
+	
+	TlsSetValue 则与 TlsAlloc 类似，首先判断 Tls 索引是否大于64，如果不大于，则是分配在预留64个槽位，
+	如果大于1024 + 64 则直接出错，否则在扩展Tls中根据索引进行查找。
+	
+	注： 对于 PEB 中TlsBitmap/TlsExpansionBitmap 的初始化时在 LdrpInitializeProcess() 函数中完成的，
+	它是进程第一个线程开始运行时通过APC返回R3运行的对进程的初始化函数。
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////
+	0:000> dt 013e6534 _IMAGE_TLS_DIRECTORY32 
+	RuntimeTest!_IMAGE_TLS_DIRECTORY32
+	   +0x000 StartAddressOfRawData : 0x13e9000
+	   +0x004 EndAddressOfRawData : 0x13e9208
+	   +0x008 AddressOfIndex   : 0x13e7150
+	   +0x00c AddressOfCallBacks : 0x13e5720
+	   +0x010 SizeOfZeroFill   : 0
+	   +0x014 Characteristics  : 0	
+	
+	0:000> dt 7efdd000 ntdll!_TEB
+	   +0x000 NtTib            : _NT_TIB
+	   +0x01c EnvironmentPointer : (null) 
+	   +0x020 ClientId         : _CLIENT_ID
+	   +0x028 ActiveRpcHandle  : (null) 
+	   +0x02c ThreadLocalStoragePointer : 0x00325f80   // 静态TLS
+	   +0x030 ProcessEnvironmentBlock : 0x7efde000 _PEB
+	
+	LdrpInitializeProcess() 在进程的第一个线程初始化时调用。	
+		LdrpInitializeTls() 对静态 TLS进行初始化，其实就是将Bitmap设置为0，数量设置为0。
+		
+		遍历导入表，加载模块时，调用 LdrpHandleTlsData() 将各模块的tls信息放到TLS信息列表中。
+	
+	LdrpInitializeThread() 在线程初始化时，会对TLS进行处理。
+	
+		每个线程启动时，调用  LdrpAllocateTls() 为线程分配静态 TLS的空间，保存到TEB的 ThreadLocalStoragePointer 成员中
+		EXE和每个DLL在 静态TLS数据块中的索引由各模块自身 .tls 段中的_IMAGE_TLS_DIRECTORY32.AddressOfIndex字段指向的值
+		保存，用于获取本模块TLS变量时使用。
+		
+		调用 LdrpCallInitRoutine 对TLS的回调进行调用。
+		
+	ThreadLocalStoragePointer 中保存的是一个指针数组，每个指针指向一个模块的 TLS 数据。ntdll的全局变量 LdrpTlsList
+	
+	当新的模块加载时，则在 调用 ntdll!LdrpHandleTlsData 函数时，给所有的线程加上新模块的 Tls 的数据。
+	
+	ntdll!LdrpTlsLock            静态Tls锁变量
+	ntdll!LdrpImageHasTls
+	ntdll!LdrpLockTlsDelayedReclaimTable
+	ntdll!LdrpTlsBitmap          静态Tls的位图，两个成员，第二个buffer指向  ntdll!LdrpStaticTlsBitmapVector
+	ntdll!LdrpDelayedTlsReclaimTable
+	ntdll!LdrpQueueDeferredTlsData
+	ntdll!LdrpStaticTlsBitmapVector 静态Tls 位图内存
+	ntdll!LdrpAllocateTlsEntry
+	ntdll!LdrpCleanupThreadTlsData
+	ntdll!LdrpUnlockTlsDelayedReclaimTable
+	ntdll!LdrpFreeTls
+	ntdll!LdrpGetNewTlsVector    分配新的 Tls位图向量 
+	ntdll!LdrpReleaseTlsIndex
+	ntdll!LdrpReleaseTlsEntry
+	ntdll!LdrpAllocateTls
+	ntdll!LdrpTlsList
+	ntdll!LdrpHandleTlsData      分配 Tls 实际数据
+	ntdll!LdrpInitializeTls
+	ntdll!LdrpFindTlsEntry
+	ntdll!LdrpCallTlsInitializers
+	ntdll!LdrpPotentialTlsLeaks
+	ntdll!LdrpAcquireTlsIndex
+	
 6. 系统调用
     
-    
-    
+    系统调用有两种方式，一种是早期的通过特定中断（Int 2Eh，自陷指令）进入内核。另外一种是通过特定指令
+	sysenter/sysexit 来实现进出内核。
+	
+	通过自陷指令 int 2eh 进入内核中时，只需要在栈上准备好参数，执行 int 2eh即可，进入内核后，其处理与
+	中断处理类似（内核栈自动切换，原始栈指针 esp 自动压栈），保存CPU执行环境，切换到内核执行。根据系统
+	调用号查表，获得要执行的系统调用函数，进入执行。
+	
+	sysenter/sysexit相比于自陷指令，它比较快速，所有又叫快速系统调用。它两个是特殊指令，只能用于系统调用
+	如下为 ntdll!NtReadFile 系统调用的汇编指令，
+	
+	0: kd> u ntdll!NtReadFile
+	ntdll!ZwReadFile:
+	772d62b8 b811010000      mov     eax,111h
+	772d62bd ba0003fe7f      mov     edx,offset SharedUserData!SystemCallStub (7ffe0300)
+	772d62c2 ff12            call    dword ptr [edx]
+	772d62c4 c22400          ret     24h	
+	
+	0: kd> dds SharedUserData!SystemCallStub
+	7ffe0300  772d70b0 ntdll!KiFastSystemCall
+	7ffe0304  772d70b4 ntdll!KiFastSystemCallRet
+	7ffe0308  00000000	
+	
+	ntdll!KiFastSystemCall:
+	772d70b0 8bd4            mov     edx,esp
+	772d70b2 0f34            sysenter
+	ntdll!KiFastSystemCallRet:
+	772d70b4 c3              ret
+	
+	sysenter指令直接使用 SYSENTER_CS_MSR（0x174） 模式特定寄存器中保存的值作为 CS，用该值 + 8 作为 SS 值。
+	SYSENTER_ESP_MSR(0x175) / SYSENTER_EIP_MSR(0x176) 则保存进入内核的ESP/EIP ，EIP为 nt!KiFastCallEntry
+	ESP为 DPC 的栈，用作临时使用。在进入内核后，获取了当前线程内核栈之后则切换到线程的内核栈上。
+	
+	再接下来的工作就和自陷进入内核类似了，这里要模拟自陷指令，建立一个自陷指令压栈的内容，同时手动构建自陷栈帧。
+    以保持与其后与自陷指令相同的执行流程。
+	
+	
 7. 界面子系统（消息系统/对话框，模态与非模态）
 
     
@@ -337,3 +884,26 @@ msvcrt.dll 和 msvcr90.dll 区别，前者是为操作系统提供，由微软�
     
 
 10. 句柄/事件（命名与匿名）/互斥提（Mutex）/信号量（Semophore）
+
+	可等待对象 原理 
+	
+	
+	
+11. Hook实现原理
+	
+12. 会话
+
+13. Wow64 原理
+	https://dbgtech.github.io/2018/11/09/WindowsX64-Wow64-Internals.html
+
+
+14. Windows编程中的红线（禁忌）
+
+	DLLMain 调用死锁
+	
+	CreateThread / _beginthread 之间区别
+	
+	
+	
+
+
