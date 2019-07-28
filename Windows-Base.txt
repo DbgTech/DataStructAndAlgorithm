@@ -55,6 +55,8 @@ Windows基础知识：
 
     那么同理推之，如果两个模块都是静态链接CRT方式，那么它们动态分配内存也无法相互释放。
     所以模块间最好不要相互传递自己通过CRT库函数动态分配的内存。
+	
+	其次是模块最好不要到处返回 std::string 等具有内存申请与释放的类对象，这容易导致错误。
 
     GlobalAlloc     // 在32位的Windows上已经简化为从进程默认堆上分配内存
     HeapAlloc       // 从指定堆上分配内存，有堆句柄HANDLE hHeap指定堆
@@ -884,26 +886,191 @@ Windows基础知识：
     
 
 10. 句柄/事件（命名与匿名）/互斥提（Mutex）/信号量（Semophore）
-
+	
+	在Windows操作系统中，内核对象是指某个静态定义的对象类型的单个运行时实例。对象类型由系统定义的数据类型，
+	在该数据类型的实例上进行操作的一组函数以及一组对象属性构成。
+	
+	并非Windows操作系统中的所有数据结构都是对象，只有确实需要共享，保护，命名或让用户模式程序看到的数据才
+	被放到对象中。
+	
+	内核中对象可以做简单分类：一类是控制对象，它们建立了有关控制各种操作系统功能的语义，包括APC对象，DPC对象
+	I/O管理器使用对象，比如中断对象等。
+	一类是分发器对象（Dispatcher object），融合了同步的能力，可以改变或影响线程的调度。分发器对象包括内核线程
+	互斥体，事件，内核事件对，信号量，定时器以及可定带的定时器（waitable timer）等。
+	
 	可等待对象 原理 
 	
 	
+	内核中处理器相关的数据结构体是 KPCR，它包含了与处理器有关的数据，例如处理器的中断分发表IDT，任务状态段TSS，
+	全局描述符表GDT。内核中 fs寄存器指向KPCR，X64上 gs寄存器指向KPCR。
+	KPCR中包含一个内核处理器控制块 KPRCB（kernel processor control block）的内嵌数据结构。它包含了私有数据结构
+	仅仅Ntoskrnl.exe的内核代码使用。包含线程调度信息，空闲线程，分发器数据库，DPC队列CPU信息等。
 	
-11. Hook实现原理
 	
-12. 会话
+	
+11. Hook实现原理 
 
-13. Wow64 原理
+12. 注入方法
+	
+	1. CreateRemoteThread()/NtCreateThreadEx()/RtlCreateUserThread() 实现远程线程注入
+	
+	2. QueueUserAPC() 在目标进程插入APC
+	
+	3. SetWindowsHookEx() 设置全局钩子
+	
+	4. 利用SetThreadContext()找到的代码区域
+	
+	5. 
+	
+	//////////////////////////////////////////////////////////
+	DLL延迟加载原理：
+		如下为延迟导入表的描述符，其中 rvaIAT 指向了延迟导入表的导入项，rvaINT为名字项
+	typedef struct ImgDelayDescr {
+		DWORD           grAttrs;        // attributes
+		RVA             rvaDLLName;     // RVA to dll name
+		RVA             rvaHmod;        // RVA of module handle
+		RVA             rvaIAT;         // RVA of the IAT
+		RVA             rvaINT;         // RVA of the INT
+		RVA             rvaBoundIAT;    // RVA of the optional bound IAT
+		RVA             rvaUnloadIAT;   // RVA of optional copy of original IAT
+		DWORD           dwTimeStamp;    // 0 if not bound,
+										// O.W. date/time stamp of DLL bound to (Old BIND)
+	} ImgDelayDescr, * PImgDelayDescr;
+	typedef const ImgDelayDescr *   PCImgDelayDescr;
+	
+	比如 urlmon 延迟导入 Version.dll 的 rvaIAT 指向的表如下。rvaINT 则是导入函数的名字的RVA表。
+	0:000> dds urlmon + 0x000d7080
+	76197080  760d159b urlmon!_imp_load_GetFileVersionInfoSizeW
+	76197084  76190646 urlmon!_imp_load_GetFileVersionInfoExW
+	76197088  761811d1 urlmon!_imp_load_VerQueryValueA
+	7619708c  760d1589 urlmon!_imp_load_GetFileVersionInfoW
+	76197090  760d15ad urlmon!_imp_load_VerQueryValueW
+	76197094  761811fb urlmon!_imp_load_GetFileVersionInfoSizeA
+	76197098  761811e6 urlmon!_imp_load_GetFileVersionInfoA
+	7619709c  7619065b urlmon!_imp_load_GetFileVersionInfoSizeExW	
+	
+	urlmon!_imp_load_GetFileVersionInfoSizeW
+	
+	0:000> u 760d159b
+	urlmon!_imp_load_GetFileVersionInfoSizeW:
+	760d159b b880701976      mov     eax,offset urlmon!_imp__GetFileVersionInfoSizeW (76197080)
+	760d15a0 eb12            jmp     urlmon!_tailMerge_VERSION_dll (760d15b4)	
+	
+	0:000> u urlmon!_tailMerge_VERSION_dll
+	urlmon!_tailMerge_VERSION_dll:
+	760d15b4 51              push    ecx
+	760d15b5 52              push    edx
+	760d15b6 50              push    eax
+	760d15b7 68d4071976      push    offset urlmon!_DELAY_IMPORT_DESCRIPTOR_VERSION_dll (761907d4)
+	760d15bc e8d8cdffff      call    urlmon!__delayLoadHelper2 (760ce399)
+	760d15c1 5a              pop     edx
+	760d15c2 59              pop     ecx
+	760d15c3 ffe0            jmp     eax	
+
+	urlmon!_DELAY_IMPORT_DESCRIPTOR_VERSION_dll 变量指向的即前面的延迟导入表描述项的结构体。
+	而 urlmon!__delayLoadHelper2 负责将DLL加载起来，并且通过 GetProcAddress 获取要调用函数。
+	
+13. 会话
+	
+	终端服务指的是单个系统中，Windows对于多个可交互用户会话的支持。利用Windows的终端服务，一个远程用户
+	可以在另一台机器上建立一个会话，并登录进去，在该服务器上运行应用程序。
+	
+	
+	
+	
+	
+14. Wow64 原理
 	https://dbgtech.github.io/2018/11/09/WindowsX64-Wow64-Internals.html
 
-
-14. Windows编程中的红线（禁忌）
-
-	DLLMain 调用死锁
+15. Windows编程中的红线（禁忌）
 	
-	CreateThread / _beginthread 之间区别
+	C++中多线程访问变量，必须使用volatile关键字以及正确加锁。
 	
+	::new 默认失败时会抛出异常，建议使用 std::nothrow 设置不抛出异常，仅以返回NULL为结果
 	
+	C/C++运行时库的静态版本链接要注意，DLL与EXE之间使用不同的运行时库，因此各自分配内存只能在各自DLL中释放。
 	
+	源与目的可能出现重叠的缓冲区拷贝，应该用memmove/MoveMemory，而不是使用memcpy/CopyMemory.
+	
+	要切实清空内存，比如用完的密码，不要用memset/ZeroMemory/RtlZeroMemory/RtlFillMemory，他们可能被编译器优化掉
+	应该使用 SecureZeroMemory/RtlSecureZeroMemory 函数。
+	
+	wow64下如果要访问64位所涉及的目录，需要关闭文件系统重定向。对于普通的需求，使用C++ class进行封装，构造函数关闭
+	重定向，析构函数恢复重定向。
+		关闭文件重定向会导致一些API行为的不确定性，比如LoadLibrary，或包含该逻辑的ShellApi等。
+		
+	进程退出时，通过LoadLibrary加载进来的各个DLL的卸载顺序无法保证，尽量不要让DLL之间出现卸载的依赖。		
+	
+	DLLMain调用：
+		DllMain内通过全局变量保存 hDllHandle
+		
+		静态链接CRT时禁止DllMain中调用 DisableThreadLibraryCalls，这会导致 CRT 的每个线程的数据泄漏。
+			DisableThreadLibraryCalls 函数最终会调用 LdrDisableThreadCalloutsForDll()，在这个函数中首先遍历了 PEB的Ldr
+		表，根据加载顺序找到当前模块在链表中项，即 _LDR_DATA_TABLE_ENTRY 结构体，然后如果其 TlsIndex 为0，则将Flags成员
+		或上 0x40000 标记，用于确定该模块在线程创建时不需要调用DllMain。
+			线程中使用的TLS数据就在模块卸载时无法删除，造成内存泄漏。
+		
+		0:026> dd ntdll!PebLdr
+		77f40200  00000030 00000001 00000000 00595a70
+		77f40210  08717f38 00595a78 08717f40 00595b00
 
-
+		0:026> dt 77f40200 ntdll!_PEB_LDR_DATA
+		   +0x000 Length           : 0x30
+		   +0x004 Initialized      : 0x1 ''
+		   +0x008 SsHandle         : (null) 
+		   +0x00c InLoadOrderModuleList : _LIST_ENTRY [ 0x595a70 - 0x8717f38 ]
+		   +0x014 InMemoryOrderModuleList : _LIST_ENTRY [ 0x595a78 - 0x8717f40 ]
+		   +0x01c InInitializationOrderModuleList : _LIST_ENTRY [ 0x595b00 - 0x8717f48 ]
+		   +0x024 EntryInProgress  : (null) 
+		   +0x028 ShutdownInProgress : 0 ''
+		   +0x02c ShutdownThreadId : (null) 
+		0:026> dt 0x595a70  ntdll!_LDR_DATA_TABLE_ENTRY
+		   +0x000 InLoadOrderLinks : _LIST_ENTRY [ 0x595af0 - 0x77f4020c ]
+		   +0x008 InMemoryOrderLinks : _LIST_ENTRY [ 0x595af8 - 0x77f40214 ]
+		   +0x010 InInitializationOrderLinks : _LIST_ENTRY [ 0x0 - 0x0 ]
+		   +0x018 DllBase          : 0x002e0000 
+		   +0x01c EntryPoint       : 0x002e1a6e 
+		   +0x020 SizeOfImage      : 0xa6000
+		   +0x024 FullDllName      : _UNICODE_STRING "C:\Program Files (x86)\Internet Explorer\iexplore.exe"
+		   +0x02c BaseDllName      : _UNICODE_STRING "iexplore.exe"
+		   +0x034 Flags            : 0x4000
+		   +0x038 LoadCount        : 0xffff
+		   +0x03a TlsIndex         : 0
+		   +0x03c HashLinks        : _LIST_ENTRY [ 0x8717c74 - 0x77f44860 ]
+		   +0x03c SectionPointer   : 0x08717c74 
+		   +0x040 CheckSum         : 0x77f44860
+		   +0x044 TimeDateStamp    : 0x5669ba69
+		   +0x044 LoadedImports    : 0x5669ba69 
+		   +0x048 EntryPointActivationContext : (null) 
+		   +0x04c PatchInformation : (null) 
+		   +0x050 ForwarderLinks   : _LIST_ENTRY [ 0x595ac0 - 0x595ac0 ]
+		   +0x058 ServiceTagLinks  : _LIST_ENTRY [ 0x595ac8 - 0x595ac8 ]
+		   +0x060 StaticLinks      : _LIST_ENTRY [ 0x5d5708 - 0x5d2260 ]
+		   +0x068 ContextInformation : 0x77e7ef04 
+		   +0x06c OriginalBase     : 0
+		   +0x070 LoadTime         : _LARGE_INTEGER 0x0		
+		
+		在DllMain中禁止调用大多数系统API，尤其ShellAPI，CryptoAPI，Wait等可能会出现LoadLibrary或等待事件的函数。
+		这些API很容易和DllMain调用时持有的 loader锁 出现死锁。
+		
+		DllMain之外的全局对象的构造/析构，静态对象的析构也受到类似DllMain的限制，这些逻辑也都持有 loader锁时执行的。
+		
+		交叉锁，例如DllMain中初始化COM，它拿着loader锁，请求COM锁；另外一个线程持有COM锁，COM初始化或执行的内部执行了
+		LoadLibrary/FreeLibray/GetProcAddress时会请求Loader锁，导致两个线程交叉持锁卡死。				
+		
+	CreateThread / _beginthreadex 之间区别
+		CreateThread() 是系统调用，在使用它创建线程时，如果是静态链接则没有对CRT进行初始化的部分代码。这个问题并不大
+		但是对于线程结束，ExitThread 则直接将线程结束掉，并不会做 CRT的资源释放，所以这里最调用 _endthreadex这样就能
+		将 TLS 中的 _tiddata 数据释放掉。也即尽量使用 _beginthreadex/_endthreadex 来创建和技术进程。
+		
+		为何CreateThread() 创建线程虽然没有进行 CRT 初始化，但是在线程中使用CRT函数不会出错呢？原因就是调用CRT的函数时，
+		比如 strtok()，如果发现当前线程还没有 _tiddata 数据，则会动态分配一份，所以调用没问题。
+		
+	Dll引用计数相关
+		DLL创建的线程，要求该线程在自己的生命周期内持有该DLL的引用计数，防止线程没有结束，DLL已经被unload了，导致非法地址。
+		
+		DLL创建线程时，要采用GetModuleHandleEx/CreateThread/FreeLibraryAndExitThread模式，这样防止线程没退出DLL被卸载问题。
+		FreeLibraryAndExitThread之后，线程就已经退出了，此后线程不会执行任何析构代码，所以要在该函数之前释放掉线程资源。
+		
+	
+	
