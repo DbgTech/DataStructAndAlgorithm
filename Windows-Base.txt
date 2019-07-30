@@ -878,13 +878,133 @@ Windows基础知识：
     
 
 8. 定时器
-
+	
+	系统时钟可以有PIT（Programmable Interrupt Timer）芯片来维护，或者由 RTC（Real Time Clock实时时钟）来维护。
     
 
 9. 内核知识 APC DPC
-    
-    
+    DPC（Defered Process Call）是完成某项系统任务的函数，这一系统任务不想当前任务那样时间紧迫，所以称为延迟的。
+	DPC赋予操作系统这样一种能力：产生一个中断并且在内核模式下执行一个系统函数。
+	
+	DPC可以用来处理定时器到期；线程时钟到期后重新调度处理器；设备驱动利用DPC处理中断。
+	
+	DPC是通过DPC对象类表示，DPC对象是一种内核控制对象，它对于用户模式程序是不可见的。DPC对象中包含了内核处理该
+	DPC时要调用的系统函数的地址。
+	
+	处于等待状态的DPC存储于内核管理队列，每个处理器都有这样的队列，称为DPC队列，是KPCR的一个成员
+	
+	DPC的处理时机是当处理器的IRQL要从DPC/Dispatch或更高级别降低到某个级别（APC或被动级别）。Windows在处理DPC时
+	依然会确保处理器IRQL在DPC/Dispatch级别上，将当前处理器的DPC队列拉空。
+	DPC例程执行并不确定当前处于那个进程地址空间，例程可以调用内核函数，但是不能使用系统服务，产生页面错误，创建
+	或等待分发器对象。
 
+	0: kd> dt 83f7ec00 nt!_KPCR
+	   +0x000 NtTib            : _NT_TIB
+	   ......
+	   +0x018 Used_Self        : (null) 
+	   +0x01c SelfPcr          : 0x83f7ec00 _KPCR
+	   +0x020 Prcb             : 0x83f7ed20 _KPRCB
+	   +0x024 Irql             : 0x1f ''
+       ......
+	   +0x0dc KernelReserved2  : [17] 0
+	   +0x120 PrcbData         : _KPRCB
+	
+	可见 KPCR中包含了一个指向 KPRCB 的指针，即 Prcb，其实 KPRCB 内容就位于 KPCR 结构体之后。
+	
+	0: kd> dt  0x83f7ed20 nt!_KPRCB
+	   +0x000 MinorVersion     : 1
+	   +0x002 MajorVersion     : 1
+	   +0x004 CurrentThread    : 0x83f88380 _KTHREAD
+	   +0x008 NextThread       : (null) 
+	   +0x00c IdleThread       : 0x83f88380 _KTHREAD
+	   +0x010 LegacyNumber     : 0 ''
+	   +0x011 NestingLevel     : 0x1 ''
+	   ......
+	   +0x18a8 PrcbPad50        : [56]  ""
+	   +0x18e0 DpcData          : [2] _KDPC_DATA
+	   +0x1908 DpcStack         : 0x80790000 Void
+	   +0x190c MaximumDpcQueueDepth : 0n4   
+	   +0x1910 DpcRequestRate   : 0
+	   +0x1914 MinimumDpcRate   : 3
+	   +0x1918 DpcLastCount     : 0x18e8e
+	   +0x191c PrcbLock         : 0
+	   +0x1920 DpcGate          : _KGATE
+	   +0x1930 ThreadDpcEnable  : 0x1 ''
+	   +0x1931 QuantumEnd       : 0 ''
+	   +0x1932 DpcRoutineActive : 0 ''
+	   +0x1933 IdleSchedule     : 0 ''
+	   +0x1934 DpcRequestSummary : 0n8
+	   +0x1934 DpcRequestSlot   : [2] 0n8
+	   +0x1934 NormalDpcState   : 0n8
+	   +0x1936 DpcThreadActive  : 0y0
+	   +0x1936 ThreadDpcState   : 0n0
+	   +0x1938 TimerHand        : 0xb8e59
+	   ......
+	   +0x3618 Context          : 0x807d2340 _CONTEXT
+	   +0x361c ContextFlags     : 0x1007f
+	
+	DPC 队列位于 KPRCB 结构体中，即DpcData 成员所指向的。
+	
+	0: kd> dt nt!_KDPC_DATA
+	   +0x000 DpcListHead      : _LIST_ENTRY
+	   +0x008 DpcLock          : Uint4B
+	   +0x00c DpcQueueDepth    : Int4B
+	   +0x010 DpcCount         : Uint4B	
+	
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	APC（Async Process  Call），异步过程调用中断，它提供了一种在特定用户线程环境中执行用户程序和系统代码的途径。
+	由于不再DPC/Disptach级别上工作，所以APC中没有DPC那样的限制。
+	
+	APC由称为APC对象的内核控制对象来描述。等待的APC存储在内核管理的APC队列中，APC是与特定线程相关的。
+	有两种APC类型：内核模式和用户模式。内核模式的APC并不要求从目标线程获得许可就可以在该线程环境运行。而用户模式
+	APC必须先获得许可才可以。内核模式的APC也分为两种：普通的和特殊的。特殊APC在APC级别上执行，并且允许APC例程修改
+	某些APC参数；而普通的APC在被动级别上执行，接收被特殊APC例程修改过的参数（当然也可以不修改）。
+	
+	内核执行体使用内核模式的APC来完成那些必须在特定线程的地址空间（执行环境）中才能完成的操作系统任务。
+
+	用户APC在ReadFileEx/WriteFileEx/QueueUserAPC等系统调用中会用到，比如ReadFileEx会指定一个完成例程，在I/O操作
+	完成时完成例程会被调用，I/O完成机制就是在发起I/O线程里面插入一个APC实现。
+		只有当前线程处于可惊醒状态时，用户APC才可以交付线程，通常可以通过等待一个对象句柄，并指定等待是
+		可警醒的（WaitForMultipleObjectEx等函数），或者直接测试是否有未处理的APC（SleepEx）。
+		
+	0: kd> dt nt!_KTHREAD
+	   +0x000 Header           : _DISPATCHER_HEADER
+	   +0x010 CycleTime        : Uint8B
+	   ......
+	   +0x03c MiscFlags        : Int4B   
+	   +0x040 ApcState         : _KAPC_STATE
+	   +0x040 ApcStateFill     : [23] UChar	
+	   ......
+	   +0x084 KernelApcDisable : Int2B
+	   +0x086 SpecialApcDisable : Int2B
+	   +0x084 CombinedApcDisable : Uint4B
+	   ......
+	   +0x168 ApcStatePointer  : [2] Ptr32 _KAPC_STATE
+	   +0x170 SavedApcState    : _KAPC_STATE
+	   +0x170 SavedApcStateFill : [23] UChar
+	   +0x187 WaitReason       : UChar
+	   ......
+	   
+	0: kd> dt nt!_KAPC_STATE
+	   +0x000 ApcListHead      : [2] _LIST_ENTRY
+	   +0x010 Process          : Ptr32 _KPROCESS
+	   +0x014 KernelApcInProgress : UChar
+	   +0x015 KernelApcPending : UChar
+	   +0x016 UserApcPending   : UChar	   
+	   
+	在内核中 ETHREAD中的KTHREAD结构中保存了 APC相关的内容，其中 ApcState保存了当前线程的APC信息，其为结构体_KAPC_STATE
+	在其中包含了ApcListHead 它是两个APC队列头，一个内核APC，一个用户APC。
+	
+	SavedApcState 成员则是当线程挂靠到其他的进程中时，用于保存线程在原来进程中的APC状态。
+	
+	_KTHREAD->Alertable 表示当前线程是可警醒的，如果是就可以投递用户APC。
+	
+	执行用户APC时，首先要将当前线程的陷阱帧信息在线程用户栈上构建一个Context环境，然后修改陷阱帧，返回到R3层的函数
+	ntdll!KiUserApcDispatcher中进行APC分发。
+	当用户层的APC执行完毕后，执行 ntdll!NtContinue 通过传入之前在用户栈构建的 Context 来回到内核。以便于恢复线程要退出内核
+	前的状态。其实这时会再次进入 APC检查逻辑，就又会进行循环。
+	
+	
 10. 句柄/事件（命名与匿名）/互斥提（Mutex）/信号量（Semophore）
 	
 	在Windows操作系统中，内核对象是指某个静态定义的对象类型的单个运行时实例。对象类型由系统定义的数据类型，
@@ -899,17 +1019,22 @@ Windows基础知识：
 	互斥体，事件，内核事件对，信号量，定时器以及可定带的定时器（waitable timer）等。
 	
 	可等待对象 原理 
-	
+		同步是一个对于Windows应用程序可见的属性，它指的是一个线程通过等待某个对象从一种状态改变成另一种状态，
+		从而达到同步其执行过程的能力。
+		线程可以通过执行体的作业，进程，线程，文件，事件，信号量，互斥体和定时器等对象来进行同步。
+		这类对象是分发器对象的包装对象，包含一个分发器头，分发器头是一个内核结构。
+		
+		在分发头中包含了对象的状态，等待队列等，这样就可以用于等待。
 	
 	内核中处理器相关的数据结构体是 KPCR，它包含了与处理器有关的数据，例如处理器的中断分发表IDT，任务状态段TSS，
 	全局描述符表GDT。内核中 fs寄存器指向KPCR，X64上 gs寄存器指向KPCR。
 	KPCR中包含一个内核处理器控制块 KPRCB（kernel processor control block）的内嵌数据结构。它包含了私有数据结构
 	仅仅Ntoskrnl.exe的内核代码使用。包含线程调度信息，空闲线程，分发器数据库，DPC队列CPU信息等。
 	
-	
-	
 11. Hook实现原理 
-
+	
+	
+	
 12. 注入方法
 	
 	1. CreateRemoteThread()/NtCreateThreadEx()/RtlCreateUserThread() 实现远程线程注入
@@ -920,7 +1045,12 @@ Windows基础知识：
 	
 	4. 利用SetThreadContext()找到的代码区域
 	
-	5. 
+	5. 修改导入表
+	
+	6. shims.dll / AppPatch机制
+		创建 sdb 文件，加载对应的补丁DLL
+		
+	7. 驱动注入 
 	
 	//////////////////////////////////////////////////////////
 	DLL延迟加载原理：
@@ -975,9 +1105,7 @@ Windows基础知识：
 	终端服务指的是单个系统中，Windows对于多个可交互用户会话的支持。利用Windows的终端服务，一个远程用户
 	可以在另一台机器上建立一个会话，并登录进去，在该服务器上运行应用程序。
 	
-	
-	
-	
+	会话在内核中都是对象!
 	
 14. Wow64 原理
 	https://dbgtech.github.io/2018/11/09/WindowsX64-Wow64-Internals.html
