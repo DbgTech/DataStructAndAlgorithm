@@ -874,9 +874,106 @@ Windows基础知识：
 	
 	
 7. 界面子系统（消息系统/对话框，模态与非模态）
-
-    
-
+	
+	PsConvertToGuiThread() 将普通线程转换为 GUI线程，KTHREAD中的 Win32Thread 成员会被赋值。
+	
+	1: kd> dt  87df5af8 nt!_KTHREAD
+	   +0x000 Header           : _DISPATCHER_HEADER
+	   +0x010 CycleTime        : 0x00000001`17ed7cd0
+	   ......
+	   +0x18a OtherPlatformFill : 0 ''
+	   +0x18c Win32Thread      : 0xff5edb50 Void
+	   +0x190 StackBase        : 0x961df000 Void
+	   ......
+	
+	Win32Thread 本身是一个 win32k!_W32THREAD 结构，它内嵌于 _THREADINFO中，如下给出了ReactOS的该结构
+	
+	1: kd> dt 0xff5edb50  win32k!_W32THREAD
+	   +0x000 pEThread         : 0x87df5af8 _ETHREAD
+	   +0x004 RefCount         : 1
+	   +0x008 ptlW32           : (null) 
+	   +0x00c pgdiDcattr       : 0x03d70ae0 Void
+	   +0x010 pgdiBrushAttr    : 0x00210d08 Void
+	   +0x014 pUMPDObjs        : (null) 
+	   +0x018 pUMPDHeap        : (null) 
+	   +0x01c pUMPDObj         : (null) 
+	   +0x020 GdiTmpTgoList    : _LIST_ENTRY [ 0xff5edb70 - 0xff5edb70 ]
+	   +0x028 pRBRecursionCount : 0
+	   +0x02c pNonRBRecursionCount : 0
+	   +0x030 tlSpriteState    : _TLSPRITESTATE
+	   +0x090 pSpriteState     : 0xff5edb80 Void
+	   +0x094 pDevHTInfo       : (null) 
+	   +0x098 ulDevHTInfoUniqueness : 0
+	   +0x09c pdcoAA           : (null) 
+	   +0x0a0 pdcoRender       : (null) 
+	   +0x0a4 pdcoSrc          : (null) 
+	   +0x0a8 bEnableEngUpdateDeviceSurface : 0 ''
+	   +0x0a9 bIncludeSprites  : 0 ''
+	   +0x0ac ulWindowSystemRendering : 0
+	   +0x0b0 iVisRgnUniqueness : 0x603
+   
+    _THREADINFO 本身包含了消息队列，Windows中应该是有7个，这里只有三个。
+   
+	typedef struct _THREADINFO
+	{
+		W32THREAD;
+		PTL                 ptl;
+		PPROCESSINFO        ppi;
+		PQ                  pq; //Input Queue (Messages from mouse, keyboard and SendInput) 
+		PKL                 spklActive;
+		PCLIENTTHREADINFO   pcti;
+		PDESKTOP            rpdesk;
+		PDESKTOPINFO        pDeskInfo;
+		PCLIENTINFO         pClientInfo;
+		ULONG               TIF_flags;
+		PUNICODE_STRING     pstrAppName;
+		PSMS                psmsSent; //Send Message Queue
+		PSMS                psmsCurrent;
+		PSMS                psmsReceiveList;
+		LONG                timeLast;
+		ULONG_PTR           idLast;   
+		......
+	};
+	
+	一个窗口类 用 _WINDOW_OBJECT 来表示，其有指向所属线程成员。同时有由它创建的窗口成员。
+	
+	typedef struct _WINDOW_OBJECT  //每个窗口对象的内部结构
+	{
+		THRDESKHEAD head;	// 
+		PWND Wnd;			// 内部结构
+		PTHREADINFO pti; 	// 所属线程
+		HMENU SystemMenu;	// 左上角的系统菜单
+		HWND hSelf;			// 窗口句柄是内核全局的
+		ULONG state;		//
+		HANDLE hrgnUpdate;	// 当前无效区域（指更新区域）的句柄
+		HANDLE hrgnClip;	// 剪裁区域的句柄	
+		......
+	}
+	
+	在某个窗口点击，鼠标监控线程知道哪个窗口，根据窗口成员，找到线程，把这个点击事件放到这个线程的消息队列里。	
+	窗口句柄是全局的，HWND不是地址，是0环窗口句柄表的索引。
+	
+	一个线程可以有多个窗口，所有窗口共享一个（一组）消息队列。
+	
+	创建的窗口类信息，创建的窗口，最终都会在内核进入 _WINDOW_OBJECT 对象中。_WINDOW_OBJECT 本身是和线程关联的，
+	PTHREADINFO 就是指向所属线程的指针。
+	
+	Windows维护了两种类型的队列，一种是系统消息队列，它是唯一的，用户的输入通过驱动程序转化为消息后会进入该队列，
+	然后再将消息放入对应线程（窗口）的消息队列；另外一种是线程消息队列，在调用User或者GDI的函数时创建，队列中的
+	消息会经过消息泵传递给窗口回调函数。	
+		
+	MSG msg;
+	while(GetMessage(&msg, NULL, 0, 0))  				
+	{
+		// 这个是处理键盘按键的码，转换成字符，比如有这个处理，可以用消息码WM_CHAR得到是字符
+		// 没有的话就只能用WM_KEYDOWN，得到的是asiic码。	
+		TranslateMessage(&msg); 
+		DispatchMessage(&msg); 	
+	}
+	
+	从环0调用环三的几种方式：APC  异常 内核回调，APC 回到R3为 ntdll!KiUserApcDispatcher 
+	异常回到R3 则为 ntdll!KiUserExceptionDispatcher，内核回调则为 User32!KeUserModeCallback	
+	
 8. 定时器
 	
 	系统时钟可以有PIT（Programmable Interrupt Timer）芯片来维护，或者由 RTC（Real Time Clock实时时钟）来维护。
@@ -1033,7 +1130,62 @@ Windows基础知识：
 	
 11. Hook实现原理 
 	
+    if (NO_ERROR == DetourTransactionBegin()) {
+        if (NO_ERROR != DetourUpdateThread(GetCurrentThread())
+            || NO_ERROR != DetourAttach(&(PVOID&)Sys_MessageBoxA, Mine_MessageBoxA)
+            || NO_ERROR != DetourTransactionCommit())
+        {
+            DetourTransactionAbort();
+            Sys_MessageBoxA = NULL;
+        }
+    }
 	
+	DetourTransactionBegin()
+		首先判断是否已经有线程在执行，如果有则错误。一次只允许一个线程执行。如果没有将当前线程写入s_nPendingThreadId
+		表示有线程正在操作。
+		
+		其次确保要写入转接代码的内存区块可读可写可执行。
+		
+	DetourUpdateThread()
+		挂起指定线程。这需要在外部循环获取线程句柄，然后调用该函数。
+		
+		参数指定的线程会被挂起（当前线程除外），放到 s_pPendingThreads 列表中存储。
+		
+	DetourAttach() -> DetourAttachEx()
+		其重要判断 当前挂起的线程是否是当前线程，如果不是说明有线程在操作。返回错误
+		
+		调用 DetourCodeFromPointer() 解析要Hook处是否有 jmp 指令，如果有则对Hook点进行调整（detour_skip_jmp）完成。
+			1. FF25 首先跳过导入表向量（Hook地址位于PE中，且跳转目标在PE的IAT表范围）
+			2. 0xEB 跳过补丁Jmp，如果目标位置有导入表向量也要跳过，如果跳转目标是 0xE9 长跳转也需要查找目标
+			
+			此处并没有处理 0xE8 0xE9 （X86）开始的内容，这些其实都不影响Hook，E8需要调整跳转偏移。
+		跳转目标点也要做类似处理（一般目标点不会有）。
+		
+		处理完jmp后，Hook位置与跳转目标地址不能是同一个，否则会形成循环。
+		
+		首先分配一个 DetourOperation，它是Hook的总信息，地址可以任意。
+		然后分配一个 DETOUR_TRAMPOLINE，调用 detour_alloc_trampoline() 函数：
+			这块区域的选取有讲究，对于X86来说长跳转有4G范围，空间可以任选。但是对于X64来说则不可以。
+			长跳转范围4G，则必须选在要Patch位置的上下2G内，否则一个Jmp指令覆盖不到。
+		
+		将Patch位置的代码拷贝几个完整指令（足够写跳转指令）到 Trampoline 内存中，调用DetourCopyInstruction()
+		
+		构造目标位置跳转指令以及 Trampoline 中的中转指令。同时也要保存原始指令，用于恢复钩子使用。
+		
+		最后将 DetourOperation 挂入列表（s_pPendingOperations）中，等待提交。
+		
+	DetourTransactionCommit() -> DetourTransactionCommitEx()
+		同样要判断当前的操作线程是否是当前的线程
+		
+		循环将 s_pPendingOperations 中的等待提交项一次提交。
+		
+		遍历DetourUpdateThread() 挂起的线程（位于s_pPendingThreads中），根据判断线程EIP是否位于修改
+		指令范围，有则调整。
+			这个操作对于 实施挂接 和 实施摘除钩子 都需要。
+			
+		遍历操作项，确保所有Patch位置页面属性修改完成。
+		
+		恢复所有挂起线程继续执行。			
 	
 12. 注入方法
 	
