@@ -1,5 +1,31 @@
 
-# 算法示例 #
+# 算法总结 #
+
+语言基础要有一到两个擅长，对语法要比较熟悉。
+
+数据结构也是考察重点：
+
+* 数组
+* 链表
+* 树（二叉树，红黑树）
+* 栈
+* 队列
+* 哈希表
+* 位数组/位操作
+
+常用算法：
+
+* 查找: 二分查找
+* 排序：归并排序，快速排序，堆排序
+* 递归
+* 分治算法
+* 动态规划：
+* 贪婪算法
+
+在面对实际问题时，要采用画图，举例以及分解等方法帮助寻找思路。
+
+
+## 算法示例 ##
 
 《编程珠玑》第二版中题目汇总。
 
@@ -31,9 +57,10 @@
 
 输入一个具有n个浮点数字的向量x，其输出是在输入的任何相邻子向量中找出最大和。例如，如果输入向量为如下10个元素，返回值则返回x[2..6]的总和。
 
-'''
+
+```
 31 -41 59 26 -53 58 97 -93 -23 84
-'''
+```
 
 > 四个算法，三阶，二阶，线性
 
@@ -63,6 +90,218 @@
 
 
 使用后缀数组，时间复杂度为O(nlogn)。
+
+### 字符串转整数 ###
+
+将一个字符串转换成整数。
+
+> 考察代码完整性，鲁棒性（边界值，输入参数检查，输入错误等）
+
+```
+int StrToInt(char* str)
+```
+
+### 求链表中倒数第K个节点 ###
+
+给一个链表，求链表的倒数第k个节点。
+
+> 这个题目使用快慢指针也比较简单，但是要考虑程序完整性与鲁棒性
+
+
+'''
+ListNode× FindKthToTail(ListNode* pListHead, unsigned int k)
+'''
+
+
+> 在解答简单题目时，一定考虑边界条件，特殊输入（NULL，空串，错误字符串等）以及错误处理。
+
+
+### 递归算法 ###
+
+斐波那契数列，典型的递归算法计算。
+
+青蛙跳台问题，一只青蛙一次可以跳上一级台阶，也可以跳上2级台阶，请问这只青蛙跳上n级台阶总共有多少种跳法。
+
+### 二维数组查找 ###
+
+** 题目描述 **
+
+在一个二维数组中（每个一维数组的长度相同），每一行都按照从左到右递增的顺序排序，每一列都按照从上到下递增的顺序排序。请完成一个函数，输入这样的一个二维数组和一个整数，判断数组中是否含有该整数。
+
+最坏的解决方法就是将整个数组进行遍历，二维数组，时间复杂度为 O(n^2)。
+
+[
+
+]
+
+```
+class Solution {
+public:
+    bool Find(int target, vector<vector<int> > array) {
+        bool bFind = false;
+        int nX = 0;
+        int nY = array[0].size() - 1;
+        while(nX < array.size() && nY >= 0)
+        {
+            if(array[nX][nY] == target)
+            {
+                bFind = true;
+                break;
+            }
+
+            if(array[nX][nY] < target)
+            {
+                nX++;
+            }
+            else if(array[nX][nY] > target)
+            {
+                nY--;
+            }
+        }
+
+        return bFind;
+    }
+};
+```
+
+### 替换空格 ###
+
+**题目描述**
+
+请实现一个函数，将一个字符串中的每个空格替换成“%20”。例如，当字符串为We Are Happy.则经过替换之后的字符串为We%20Are%20Happy。
+
+```
+class Solution {
+public:
+	void replaceSpace(char *str,int length) {
+    	if (str == null)
+        	return ;
+
+        char * orgStr = str;
+        int strLen = 0;
+        int emptyNum = 0;
+        while(*orgStr != 0)
+        {
+            strLen++;
+            if (*orgStr == ' ')
+                emptyNum++;
+            orgStr++;
+        }
+
+        int newLen = strLen + emptyNum * 2;
+        if (newLen > length)
+            return ;
+
+        orgStr = str + strLen;
+        char * replStr = str + newLen;
+        while (orgStr >= str)
+        {
+            if(*orgStr != ' ')
+            {
+                *replStr-- = *orgStr;
+            }
+            else
+            {
+                *replStr-- = '0';
+                *replStr-- = '2';
+                *replStr-- = '%';
+            }
+            orgStr--;
+        }
+	}
+};
+```
+
+### 两数之和 ###
+
+给定一个整数数组 nums 和一个目标值 target，请你在该数组中找出和为目标值的那 两个 整数，并返回他们的数组下标。
+你可以假设每种输入只会对应一个答案。但是，你不能重复利用这个数组中同样的元素。
+
+```
+给定 nums = [2, 7, 11, 15], target = 9
+
+因为 nums[0] + nums[1] = 2 + 7 = 9
+所以返回 [0, 1]
+```
+
+最简单的方法就是内外两个循环，一次将数组两个元素相加，如果等于target，则找到。但是这种方法的时间复杂度为O(n^2)。可以利用如下方法，额外占用空间，但是时间复杂度可以降低为O(n)。
+
+将数组元素放到哈希表中，然后依次用target和数组元素的差搜索哈希表，这样可以将时间复杂度降低为O(n)。
+
+```
+class Solution {
+public:
+    vector<int> twoSum(vector<int>& nums, int target) {
+        vector<int> vecRet;
+        std::map<int, int> hashMap;
+
+        int nNums = nums.size();
+        for(int i = 0; i < nNums; i++)
+        {
+            hashMap.insert(std::pair<int,int>(nums[i], i));
+        }
+
+        for(int i = 0; i < nNums; i++)
+        {
+        	if (nums[i] > target)
+            	continue;
+
+            int diffVal = target - nums[i];
+            if( hashMap.find(diffVal) != hashMap.end() && i != hashMap[diffVal])
+            {
+                vecRet.push_back(i);
+                vecRet.push_back(hashMap[diffVal]);
+                break;
+            }
+        }
+
+        return vecRet;
+    }
+};
+```
+
+> 来源：力扣（LeetCode）
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
