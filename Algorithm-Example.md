@@ -408,6 +408,8 @@ void HeapSort(int vecNums[], int num)
 }
 ```
 
+> 十大排序算法： https://mp.weixin.qq.com/s/IAZnN00i65Ad3BicZy5kzQ
+
 ### 字符串最长子串 ###
 
 给定一个输入文本文件，查找其中最常的重复子字符串。例如“Ask not what your country can do for you, but what you can do for your country”中最常的重复字符串就是“can do for you”，“your country”是第二长子串。如何编写解决这个问题的程序？
@@ -788,20 +790,211 @@ private:
 > 传参为常量，返回为 对象引用（否则无法连续赋值），被赋值变量资源释放，同一实例判断
 
 
+### 从尾到头打印链表 ###
+
+输入一个链表，按链表值从尾到头的顺序返回一个ArrayList。
+
+**解法**
+
+```
+/**
+*  struct ListNode {
+*        int val;
+*        struct ListNode *next;
+*        ListNode(int x) :
+*              val(x), next(NULL) {
+*        }
+*  };
+*/
+class Solution {
+public:
+    vector<int> printListFromTailToHead(ListNode* head) {
+        vector<int> vecOut;
+        if (head == NULL)
+            return vecOut;
+        std::stack<int> stkList;
+        ListNode *lpItem = head;
+        while(lpItem != NULL)
+        {
+            stkList.push(lpItem->val);
+            lpItem = lpItem->next;
+        }
+
+        while(!stkList.empty())
+        {
+            vecOut.push_back(stkList.top());
+            stkList.pop();
+        }
+
+        return vecOut;
+    }
+};
+```
+
+###洗牌算法###
+
+对于一副扑克48张，设计一个洗牌的算法，保证其公平性。
+
+**算法1**
+
+对于n张牌，要洗牌且公平，其实就是每张牌在某个位置出现的概率相同，那么这n张牌一共有多少中排列方式呢？`n!`种。所以从这`n!`种排序中选其中一种排列方式，其实得到了一种结果，且公平。
+
+要获取这`n!`中的一种排序方式，时间复杂度大约为`O(n!)`，这是比`2^n`还要大的一种时间强度。
+
+**算法2**
+
+其实洗牌算法有一种超简单的方式，即`Knuth`洗牌算法。
+
+```
+for(int i = n - 1; i >= 0; i--)
+	swap(arr[i], arr[rand() % (i+1)]);
+```
+
+按照这个算法，如何证明它的公平性呢，前面说过要实现公平其实就是要每张牌出现在每个位置的几率相等。以如下的无张牌为例说明一下。
+
+```
+[1][2][3][4][5] -> [1][2][5][4]|[3]
+
+[1][2][5][4]|[3] -> 
+```
+
+对于第一轮，这里要置换的位置为5，而所选择的要置换的牌，因为使用了 `rand() % (i+1)`则可以认为选中每一张牌的概率相等（别争辩说`rand()`函数是个伪随机），即`1/5`。选定了第一张，比如是3。第二次选的时候，从四张牌中选定一张的概率是`1/4`，但是其从所选的四张牌选择的概率是`4/5`，前面已经选择了一张放到最后位置上，所以第四个位置上选择定一张牌的概率为`4/5*1/4=1/5`
+
+###凑零钱###
+
+题目：给你 k 种面值的硬币，面值分别为 c1, c2 ... ck，再给一个总金额 n，问你最少需要几枚硬币凑出这个金额，如果不可能凑出，则回答 -1。比如说，k = 3，面值分别为 1，2，5，总金额 n = 11，那么最少需要 3 枚硬币，即 11 = 5 + 5 + 1 。
+
+动态规划遵循一套固定的流程：`递归的暴力解法 -> 带备忘录的递归解法 -> 非递归的动态规划解法`，其实这是一步一步优化的结果。可以使用动态规划解决的题目都有这么几个性质：1. 重叠子问题，即在计算最终结果过程中要计算很多相同的内容，比如斐波那契数的计算中，`f(n)=f(n-1)+f(n-2)`，其实这个式子在计算中如果采用递归，需要计算很多重复的子问题，比如`f(10)=f(9)+f(8)`，其中计算了`f(8)`，而在计算`f(9)`时则是`f(9)=f(8)+f(7)`，所以`f(8)`被重复计算了。前面那个计算斐波那契数的方程在动态规划算法中叫做状态转移方程，它是解决问题的关键。2. 最优子结构，它是动态规划的另一个重要特性，其实在这个凑零钱的算法中就会有最优子结构的使用了，比如下图为本题目的状态转移方程，可以看出如果要求解`f(n)`，则需要求出`f(n-ci)`，并得到其中的最优解。要符合最优解，则必须满足子问题间的相互独立，否则两个子问题相互依赖，则每个问题很难有最优解。当在题目中要求最优解，或代码中有循环和max/min等函数，则多数都可用动态规划进行优化。
+
+![算法公式](./Algorithm-Example-get-coin-charge.jpg)
+
+**解法1**
+
+动态规划算法一般都可以使用递归的方法解决，只是时间或空间复杂度很大而已。按照上述的状态转移方程可以得到如下的递归代码。
+
+```
+int coinChange(vector<int> &coins, int amount){
+	if(amount == 0)
+    	return 0;
+
+    int ans = INT_MAX;
+    for(int coin: coins)
+    {
+    	if(amount - coin < 0) continue;
+        int subProb = coinChange(coins, amount - coin);
+        if(subProb == -1) continue;
+
+        ans = min(ans, subProb + 1);
+    }
+
+	return ans == INT_MAX ? -1 : ans;
+}
+```
+
+**解法2**
+
+从递归算法中可以看到，在递归过程中其实计算了很多相同的比如`f(11)`计算中会计算`f(9)`，而在`f(10)`计算中也会计算`f(9)`，所以与斐波那契数的计算类似，也可以将这些中间结果保存。
+
+```
+int coinChange(vector<int>& coins, int amount) {
+    // 备忘录初始化为 -2
+    vector<int> memo(amount + 1, -2);
+    return helper(coins, amount, memo);
+}
+
+int helper(vector<int>& coins, int amount, vector<int>& memo) {
+    if (amount == 0)
+    	return 0;
+
+    if (memo[amount] != -2)
+    	return memo[amount];
+
+    int ans = INT_MAX;
+    for (int coin : coins) {
+        if (amount - coin < 0) // 金额不可达
+        	continue;
+        int subProb = helper(coins, amount - coin, memo);
+        if (subProb == -1) // 子问题无解
+        	continue;
+        ans = min(ans, subProb + 1);
+    }
+    // 记录本轮答案
+    memo[amount] = (ans == INT_MAX) ? -1 : ans;
+    return memo[amount];
+}
+```
+
+**解法3**
+
+有了前面的带备忘录的递归算法，也能很容易转换为动态规划的方式，带备忘录的递归算法是采用从顶向底的计算，而动态规划则是采用从底向顶的计算方式，即从`f(1)->f(2)->f(3)...->f(n)`。
+
+```
+int coinChange(vector<int>& coins, int amount) {
+    vector<int> dp(amount + 1, INT_MAX);
+
+    dp[0] = 0;
+    for (int i = 0; i < dp.size(); i++) {
+        for (int coin : coins) // 内层 for 在求所有子问题 + 1 的最小值
+        {
+            if (i - coin < 0) //
+            	continue;
+            dp[i] = min(dp[i], 1 + dp[i - coin]);
+        }
+    }
+
+    return dp[amount] == INT_MAX ? -1 : dp[amount];
+}
+```
+
+### 最长递增子序列 ###
+
+给定一个无序的证书数组，找到其中最常上升子序列的长度。比如输入`[10,9,2,5,3,7,101,18]`，其输出为4，最常的上升子序列为`[2,3,7,101]`。
+
+> 注意「子序列」和「子串」这两个名词的区别，子串一定是连续的，而子序列不一定是连续的。
+
+**解法1**
+
+最简单的解法是使用两次循环，查找所有子数组中的递增序列长度，就能找到最常的了。其时间复杂度为`O(n^2)`
+
+```
+void MaxIncrementList(int *lpNums, int nlen)
+{
+	int nMaxLen = 0;
+
+    for(int i = 0; i < nlen; i++)
+    {
+    	for(int j = i + 1; j < nlen; j++)
+        {
+        	int subMax = 0;
+
+            if(lpNums[j] > lpNums[j-1])
+            	subMax++;
+
+        	nMaxLen = max(nMaxLen, );
+        }
+    }
+	return ;
+}
+```
+
+**解法2**
+
+动态规划来解题，动态规划算法的核心思想是数学归纳法，比如我们想证明一个数学结论，那么我们先假设这个结论在 `k<n` 时成立，然后想办法证明 `k=n` 的时候此结论也成立。如果能够证明出来，那么就说明这个结论对于 k 等于任何数都成立。
+
+所以这里假设`dp[0..i-1]`，都已经计算了，`dp[i]`表示以下表i结尾的数组的最大升序子序列，那么`d[i]`该如何计算呢？这就是状态转移方程的提炼，一旦计算完了`dp`中所有的项，那么找出其中的最大值即最终结果。
+
+`dp[i]`在这个题目中该如何计算呢，其实就是查找i索引之前依次递减的序列。所以这个动态规划的算法的时间复杂度也为`O(n^2)`。
 
 
+### 位运算操作 ###
 
+https://mp.weixin.qq.com/s/C6o6T9ju34vAxNBg5zobWw
 
+https://mp.weixin.qq.com/s/6HpCx2u_m1DGuReeJxMwIg
 
+### 搜索旋转排序数组 ###
 
-
-
-
-
-
-
-
-
+https://mp.weixin.qq.com/s/t3llCqCFnPCA7kZi5bBwtg
 
 
 
