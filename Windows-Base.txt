@@ -578,7 +578,7 @@ Windows基础知识：
 			调用 DbgkForwardException 将异常转发给调试器
 				如果处理了异常，则直接退出，继续执行。
 				
-			如果没有调试器，Windows子系统也没有处理，则将异常信息复制给R3栈，然后退回R3进行异常分发
+			如果没有调试器，则将异常信息复制给R3栈，然后退回R3进行异常分发
 				此处重新构造了栈帧，用于退回R3时执行指定的函数。
 				返回R3则从 ntdll!KeUserExceptionDispatcher() 函数开始执行。
 			
@@ -1262,7 +1262,63 @@ Windows基础知识：
 14. Wow64 原理
 	https://dbgtech.github.io/2018/11/09/WindowsX64-Wow64-Internals.html
 
-15. Windows编程中的红线（禁忌）
+15. GetLastError() / C的error 
+
+	直接看反汇编代码，可以看到 fs:18h 取到的是 TEB结构体基地址，34h偏移处内容如下。
+	在TEB结构体中有一个成员为 LastErrorValue，GetLastError() 获取的就是这个值。
+	
+	; DWORD __stdcall GetLastError()
+	_GetLastError@0 proc near
+					mov     eax, large fs:18h
+					mov     eax, [eax+34h]
+					retn
+	_GetLastError@0 endp	
+	
+	0:050> dt 7ef13000 ntdll!_TEB
+	   +0x000 ExceptionList    : 0x0ed1f79c _EXCEPTION_REGISTRATION_RECORD
+	   +0x004 StackBase        : 0x0ed20000 
+	   +0x008 StackLimit       : 0x0ed1c000 
+	   ......
+	   +0x018 Self             : 0x7ef13000 _NT_TIB
+	   +0x01c EnvironmentPointer : (null) 
+	   +0x020 ClientId         : _CLIENT_ID
+	   +0x028 ActiveRpcHandle  : (null) 
+	   +0x02c ThreadLocalStoragePointer : (null) 
+	   +0x030 ProcessEnvironmentBlock : 0x7efde000 _PEB
+	   +0x034 LastErrorValue   : 0			// 
+	   +0x038 CountOfOwnedCriticalSections : 0	
+	   ......
+	   +0xbf0 glContext        : (null) 
+	   +0xbf4 LastStatusValue  : 0
+	   +0xbf8 StaticUnicodeString : _UNICODE_STRING ""
+	   ......
+	   
+	其实在Windows提供的Win32子系统中，比如kernel32.dll的ReadFile函数，它内部调用了ntdll.dll的NtReadFile，进而进入内核
+	处理，如果在内核处理中出现了错误，NtReadFile() 会返回一个错误码，这个错误码是 NTSTATUS，它在 ReadFile()函数中会被
+	转成容易识别的Dos错误码，即GetLastError()获取的值，并且将这个值写入TEB的 LastErrorValue。
+	
+	这里还有一个值就是NTSTATUS值，它是NtReadFile这类系统调用返回的值，这个值被写入了 Teb结构体的 +0xbf4 LastStatusValue
+	成员中。
+	
+	ntdll!RtlNtStatusToDosErrorNoTeb 函数用于将 NtStatus 转换为Dos错误码，转换方法是特定值处理加上错误码映射表映射。
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	在C语言运行时中，其中的函数调用也有错误码，这个错误码和 Win32的 GetLastError() 不完全是一回事。C语言运行时的错误码
+	更多的是用于标记运行时函数调用中出现的错误（部分调用也会调用系统调用，如果其中出错，也会影响到 GetLastError()值了）。
+	
+	由于要支持多线程，因此这个错误值就被存在了 运行时的TLS数据中，即 _tiddata 结构体。
+	
+	struct _tiddata {
+		unsigned long   _tid;       /* thread ID */
+		uintptr_t _thandle;         /* thread handle */
+		int     _terrno;            /* errno value */
+		unsigned long   _tdoserrno; /* _doserrno value */
+		......
+	};
+	
+	注： 这是VC2008中的实现，其他编译器以及高版本VS应该有类似实现。
+	
+16. Windows编程中的红线（禁忌）
 	
 	C++中多线程访问变量，必须使用volatile关键字以及正确加锁。
 	
